@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🌐 GeoPolitical Pulse (GEOPOL)- Real-Time Intelligence Dashboard
 
 GeoPolitical Pulse is a Next.js-based situational awareness dashboard designed for tracking real-time geopolitical events. It aggregates disparate data sources (news articles and video feeds), normalizes them into a unified intelligence stream, and presents them in a professional "Command Center" interface.
