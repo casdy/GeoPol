@@ -5,7 +5,7 @@ import { PulseItem, FetchOptions, Region } from './types';
 const NEWS_API_URL = 'https://newsapi.org/v2/everything';
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
-// Keyword strategies for regions (omitted for brevity, keep existing)
+// Keyword strategies for regions
 const REGION_KEYWORDS: Record<Region, string> = {
     'Global': 'geopolitics OR "foreign policy" OR "Security Council" OR "International Relations"',
     'Middle East': 'Israel OR Gaza OR Iran OR "Middle East" OR Syria OR Yemen OR "Saudi Arabia"',
@@ -19,9 +19,28 @@ const REGION_KEYWORDS: Record<Region, string> = {
     'Latin America': 'Brazil OR Argentina OR Venezuela OR Colombia OR "Latin America"',
 };
 
-// ... keep mock data generation ...
 // Expanded Mock Data Generator
-const generateMockData = (): PulseItem[] => {
+const generateMockData = (): PulseItem[] => { // Realistic fallback data when API quota is exceeded
+    const headlines = [
+        "Global energy summit concludes with new carbon tax agreement",
+        "Tensions rise in South China Sea as naval exercises begin",
+        "European Union announces new trade sanctions pacakge",
+        "Cybersecurity firm detects massive botnet targeting critical infrastructure",
+        "Middle East peace talks show tentative signs of progress",
+        "Satellite imagery reveals new military construction in Arctic region",
+        "OPEC+ decides to maintain current oil output levels despite pressure",
+        "Tech giants testify before Congress on AI safety regulations",
+        "Rare earth mineral discovery in Africa sparks geopolitical interest",
+        "NATO conducts large-scale joint operations drill in Eastern Europe",
+        "Food security crisis looms as grain deal negotiations stall",
+        "Semiconductor supply chain diversification accelerates across Asia",
+        "Diplomatic row escalates over border dispute in Central Asia",
+        "UN report warns of accelerating climate migration patterns",
+        "Space debris collision risks threaten commercial satellite networks"
+    ];
+
+    const sources = ['Reuters', 'AP News', 'Al Jazeera', 'BBC', 'Bloomberg', 'Foreign Policy'];
+
     const baseData: PulseItem[] = [
         {
             id: '1',
@@ -45,16 +64,15 @@ const generateMockData = (): PulseItem[] => {
         }
     ];
 
-    // Generate 20 more mock items
-    const extraItems: PulseItem[] = Array.from({ length: 20 }).map((_, i) => ({
+    const extraItems: PulseItem[] = headlines.map((title, i) => ({
         id: `mock-${i + 3}`,
-        title: `Simulated Headline ${i + 3}: Global geopolitical shifts impacting regional borders and trade agreements in Sector ${i}`,
-        source: i % 2 === 0 ? 'AP News' : 'Al Jazeera',
-        publishedAt: new Date(Date.now() - (i * 7200000)).toISOString(),
+        title: title,
+        source: sources[i % sources.length],
+        publishedAt: new Date(Date.now() - ((i + 1) * 3600000)).toISOString(), // Spread over time
         url: '#',
-        type: Math.random() > 0.7 ? 'video' : 'article',
-        tags: ['Simulation', 'Geopolitics'],
-        imageUrl: `https://placehold.co/600x400/0f172a/white?text=News+Item+${i + 3}`
+        type: i % 3 === 0 ? 'video' : 'article', // Mix types
+        tags: ['Geopolitics', 'Global'],
+        imageUrl: `https://placehold.co/600x400/0f172a/white?text=${encodeURIComponent(title.split(' ').slice(0, 2).join('+'))}`
     }));
 
     return [...baseData, ...extraItems];
