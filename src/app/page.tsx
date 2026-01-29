@@ -7,10 +7,9 @@ import { fetchPulseData } from '@/lib/api';
 import WorldMap from '@/components/dashboard/WorldMap';
 import LiveWire from '@/components/dashboard/LiveWire';
 import { ItemCard } from '@/components/dashboard/ItemCard';
-import VideoModal from '@/components/dashboard/VideoModal';
 import NewsModal from '@/components/dashboard/NewsModal';
 import CrisisToggle from '@/components/dashboard/CrisisToggle';
-import { Loader2, Search, Radar, Zap } from 'lucide-react';
+import { Loader2, Search, Radar, Zap, Globe } from 'lucide-react';
 
 export default function Dashboard() {
   const [region, setRegion] = useState<Region>('Global');
@@ -18,8 +17,7 @@ export default function Dashboard() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // Debouced state
   const [isCrisisMode, setIsCrisisMode] = useState(false);
   // const [colorMode, setColorMode] = useState<'light' | 'dark'>('dark'); // Removed: Enforcing Flashpoint Dark Mode
-  const [activeVideo, setActiveVideo] = useState<PulseItem | null>(null);
-  const [activeArticle, setActiveArticle] = useState<PulseItem | null>(null); // NEW
+  const [activeArticle, setActiveArticle] = useState<PulseItem | null>(null);
 
   // Debounce search query to prevent excessive API calls
   useEffect(() => {
@@ -35,11 +33,26 @@ export default function Dashboard() {
     refetchInterval: isCrisisMode ? 15000 : 60000,
   });
 
-  const videos = data?.filter(i => i.type === 'video') || [];
-  const articles = data?.filter(i => i.type === 'article') || [];
+  const allArticles = data || [];
+
+  // Dynamic Layout: Balance Main (2 cols) and Sidebar (1 col) heights.
+  // Ratio: 2 items in Main (1 row) ~ 1 item in Sidebar (1 row).
+  // Total Items = M + S. We want M/2 = S. => M = 2S.
+  // Total = 2S + S = 3S. => S = Total / 3. M = 2/3 Total.
+  // We ensure 'mainCount' is even to keep the grid balanced.
+
+  const totalItems = allArticles.length;
+  let mainCount = Math.floor(totalItems * (2 / 3));
+  if (mainCount % 2 !== 0) mainCount -= 1; // Ensure even number for 2-col grid
+
+  // Safe bounds check
+  if (mainCount < 0) mainCount = 0;
+
+  const mainStories = allArticles.slice(0, mainCount);
+  const feedItems = allArticles.slice(mainCount);
 
   // Latest 10 for ticker
-  const liveWireItems = articles.slice(0, 10);
+  const liveWireItems = allArticles.slice(0, 10);
 
   // FLASHPOINT THEME ENGINE
   const theme = isCrisisMode
@@ -77,8 +90,6 @@ export default function Dashboard() {
   return (
     <main className={`min-h-screen ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans`}>
 
-      {/* Video Modal */}
-      <VideoModal video={activeVideo} onClose={() => setActiveVideo(null)} />
       <NewsModal article={activeArticle} onClose={() => setActiveArticle(null)} />
 
       {/* Header */}
@@ -148,36 +159,37 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-          {/* News Stream */}
+          {/* Main Major Projects / Headlines */}
           <div className="lg:col-span-8 space-y-4">
             <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
-              <Zap className="w-4 h-4 text-orange-500" />
-              Intelligence Feed
+              <Globe className="w-4 h-4 text-orange-500" />
+              Headlines
             </h2>
 
             {isLoading ? (
               <div className="flex justify-center py-20"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
             ) : (
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                {articles.map(article => (
+                {mainStories.map(article => (
                   <ItemCard key={article.id} item={article} onPlay={(item) => setActiveArticle(item)} />
                 ))}
-                {articles.length === 0 && <p className="text-neutral-500 col-span-2 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
+                {mainStories.length === 0 && <p className="text-neutral-500 col-span-2 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
               </div>
             )}
           </div>
 
+          {/* Sidebar Intelligence Feed */}
           <div className="lg:col-span-4 space-y-6">
             <div className="sticky top-24 space-y-6">
               <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
-                <Radar className="w-4 h-4 text-orange-500" />
-                Live Surveillance
+                <Zap className="w-4 h-4 text-orange-500" />
+                Intelligence Feed
               </h2>
               <div className={`space-y-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                {videos.map(video => (
-                  <ItemCard key={video.id} item={video} onPlay={(v) => setActiveVideo(v)} />
+                {feedItems.map(item => (
+                  <ItemCard key={item.id} item={item} onPlay={(i) => setActiveArticle(i)} />
                 ))}
-                {videos.length === 0 && !isLoading && <p className="text-neutral-600 text-center text-[10px] font-mono uppercase tracking-widest pt-4">No surveillance footage available.</p>}
+                {feedItems.length === 0 && !isLoading && <p className="text-neutral-600 text-center text-[10px] font-mono uppercase tracking-widest pt-4">No additional feed data.</p>}
               </div>
             </div>
           </div>
