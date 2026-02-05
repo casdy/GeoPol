@@ -82,7 +82,7 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
             const lowerQ = options.query.toLowerCase();
             filtered = MOCK_DATA.filter(item =>
                 item.title.toLowerCase().includes(lowerQ) ||
-                (item.description || '').toLowerCase().includes(lowerQ)
+                item.description.toLowerCase().includes(lowerQ)
             );
             // If strictly searching, don't fallback/pad with random stuff unless empty? 
             // Actually, if search yields nothing, showing nothing is better than showing unrelated stuff for "only results related" request.
@@ -176,14 +176,17 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
 export async function fetchGNews(category: string = 'general', page: number = 1): Promise<PulseItem[]> {
     try {
         const apiKey = process.env.G_NEWS_API;
-        if (!apiKey) return [];
+        if (!apiKey) {
+            console.warn("GNews API Key missing. Using Mock Data fallback.");
+            return generateMockData().map(i => ({ ...i, source: 'GNews (Mock)' }));
+        }
 
         const url = `https://gnews.io/api/v4/top-headlines?category=${category}&lang=en&country=us&page=${page}&max=20&apikey=${apiKey}`;
 
         const res = await fetch(url, { next: { revalidate: 300 } });
         if (!res.ok) {
-            console.warn(`GNews API Error: ${res.statusText}`);
-            return [];
+            console.warn(`GNews API Error: ${res.statusText}. Using Mock Data fallback.`);
+            return generateMockData().map(i => ({ ...i, source: 'GNews (Mock)' }));
         }
 
         const data = await res.json();
@@ -236,6 +239,11 @@ const STRATEGIC_CITIES = [
     2147714, // Sydney
     360630,  // Cairo
     3435910, // Buenos Aires
+    745044,  // Istanbul
+    1275339, // Mumbai
+    1835848, // Seoul
+    3451190, // Rio de Janeiro
+    2332459, // Lagos
 ];
 
 // Mock Weather Data
@@ -244,24 +252,30 @@ const MOCK_WEATHER: WeatherData[] = [
     { id: 2, name: "London", temp: 8, condition: "Rain", humidity: 82, windSpeed: 6.5, feelsLike: 5, description: "light rain", pressure: 1008, country: "GB", coordinates: { lat: 51.5, lon: -0.1 } },
     { id: 3, name: "Tokyo", temp: 18, condition: "Clear", humidity: 45, windSpeed: 3.1, feelsLike: 18, description: "clear sky", pressure: 1015, country: "JP", coordinates: { lat: 35.6, lon: 139.7 } },
     { id: 4, name: "Moscow", temp: -2, condition: "Snow", humidity: 70, windSpeed: 4.0, feelsLike: -6, description: "light snow", pressure: 1020, country: "RU", coordinates: { lat: 55.7, lon: 37.6 } },
-    { id: 5, name: "Beijing", temp: 15, condition: "Haze", humidity: 55, windSpeed: 2.8, feelsLike: 14, description: "haze", pressure: 1010, country: "CN", coordinates: { lat: 39.9, lon: 116.4 } }
+    { id: 5, name: "Beijing", temp: 15, condition: "Haze", humidity: 55, windSpeed: 2.8, feelsLike: 14, description: "haze", pressure: 1010, country: "CN", coordinates: { lat: 39.9, lon: 116.4 } },
+    { id: 6, name: "Istanbul", temp: 14, condition: "Partly Cloudy", humidity: 62, windSpeed: 4.5, feelsLike: 13, description: "scattered clouds", pressure: 1016, country: "TR", coordinates: { lat: 41.0, lon: 28.9 } },
+    { id: 7, name: "Mumbai", temp: 28, condition: "Mist", humidity: 78, windSpeed: 3.5, feelsLike: 31, description: "mist", pressure: 1009, country: "IN", coordinates: { lat: 19.0, lon: 72.8 } },
+    { id: 8, name: "Seoul", temp: 5, condition: "Clear", humidity: 40, windSpeed: 2.1, feelsLike: 3, description: "clear sky", pressure: 1022, country: "KR", coordinates: { lat: 37.5, lon: 126.9 } },
+    { id: 9, name: "Rio de Janeiro", temp: 26, condition: "Sunny", humidity: 70, windSpeed: 5.5, feelsLike: 28, description: "clear sky", pressure: 1011, country: "BR", coordinates: { lat: -22.9, lon: -43.1 } },
+    { id: 10, name: "Lagos", temp: 30, condition: "Thunderstorm", humidity: 85, windSpeed: 6.0, feelsLike: 35, description: "thunderstorm", pressure: 1007, country: "NG", coordinates: { lat: 6.5, lon: 3.3 } }
 ];
 
 export async function fetchWeather(): Promise<WeatherData[]> {
     try {
-        const apiKey = process.env.OPEN_WEATHER_API_KEY;
+        // Updated to match User's .env.local
+        const apiKey = process.env.WEATHER_API_KEY || process.env.OPEN_WEATHER_API_KEY;
         if (!apiKey) {
-            console.warn("Weather API Key missing. Using Mock Data.");
+            console.warn("Weather API Key missing (WEATHER_API_KEY). Using Mock Data.");
             return MOCK_WEATHER;
         }
 
-        // Shuffle and pick 5
+        // Shuffle and pick 10
         const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
-        const selectedIds = shuffled.slice(0, 5).join(',');
+        const selectedIds = shuffled.slice(0, 10).join(',');
 
         const url = `https://api.openweathermap.org/data/2.5/group?id=${selectedIds}&units=metric&appid=${apiKey}`;
 
-        const res = await fetch(url, { next: { revalidate: 60 } });
+        const res = await fetch(url, { next: { revalidate: 600 } });
 
         if (!res.ok) {
             console.warn(`Weather API Error: ${res.status} ${res.statusText}. Using Mock Data.`);

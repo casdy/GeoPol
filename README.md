@@ -60,7 +60,7 @@ GeoPolitical Pulse is a Next.js-based situational awareness dashboard designed f
    G_NEWS_API=your_glines_key_here
    
    # Weather Data
-   OPEN_WEATHER_API_KEY=your_weather_key_here
+   WEATHER_API_KEY=your_weather_key_here
 
    # Development Settings
    NEXT_PUBLIC_USE_MOCK_DATA=false
@@ -81,4 +81,6 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 - **Monetization**: Integrated "Premium Paywall" modal for AI Summary generation.
 - **UI Architecture**: Implemented React Portals for modal rendering to ensure correct stacking contexts and Z-index layering.
 - **Search Engine**: Refined logic to prioritize direct user queries, bypassing default filters for unrestricted keyword searching.
+- **Weather Expansion**: Increased tracking to 10 strategic global cities with extended mock data coverage.
+- **Reliability**: Added robust fallback data generation for Ground News feed to prevent empty states.
 - **Micro-Interactions**: Enhanced hover states, card animations, and modal transitions.
