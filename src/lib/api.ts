@@ -82,7 +82,7 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
             const lowerQ = options.query.toLowerCase();
             filtered = MOCK_DATA.filter(item =>
                 item.title.toLowerCase().includes(lowerQ) ||
-                item.description.toLowerCase().includes(lowerQ)
+                (item.description || '').toLowerCase().includes(lowerQ)
             );
             // If strictly searching, don't fallback/pad with random stuff unless empty? 
             // Actually, if search yields nothing, showing nothing is better than showing unrelated stuff for "only results related" request.
