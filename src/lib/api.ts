@@ -42,6 +42,19 @@ const generateMockData = (): PulseItem[] => { // Realistic fallback data when AP
 
     const sources = ['Reuters', 'AP News', 'Al Jazeera', 'BBC', 'Bloomberg', 'Foreign Policy'];
 
+    // Mock Content Generator
+    const dummyContent = `
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.
+
+        "This is a significant geometric shift involves multiple state actors," said Dr. Elena Vance, a senior analyst at the Institute for Global Policy. "The ramifications will be felt across the entire region for decades to come."
+
+        The summit concluded with a joint statement pledging further cooperation on these critical issues. However, analysts remain skeptical about the implementation timeline given the current geopolitical climate.
+    `;
+
     return headlines.map((item, i) => ({
         id: `mock-${i}`,
         title: item.title,
@@ -50,7 +63,9 @@ const generateMockData = (): PulseItem[] => { // Realistic fallback data when AP
         url: '#',
         type: 'article',
         tags: [item.region, 'Geopolitics'],
-        imageUrl: `https://placehold.co/600x400/0f172a/white?text=${encodeURIComponent(item.title.split(' ').slice(0, 3).join('+'))}`
+        imageUrl: `https://placehold.co/600x400/0f172a/white?text=${encodeURIComponent(item.title.split(' ').slice(0, 3).join('+'))}`,
+        description: `Breaking news from ${item.region}: ${item.title}. Experts weigh in on the potential impact as the situation develops.`,
+        content: `(Mock Full Text) ${item.title}\n\n${item.region} - ${dummyContent}`
     }));
 };
 
@@ -113,7 +128,9 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
                 url: art.url,
                 imageUrl: art.urlToImage,
                 type: 'article',
-                tags: ['News', options.region || 'Global']
+                tags: ['News', options.region || 'Global'],
+                description: art.description,
+                content: art.content // NewsAPI usually truncates this, but we'll map it anyway
             }));
         } else {
             console.warn("News API failed (likely quota or rate limit), using fallback.");
@@ -121,6 +138,15 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
         }
 
         // Merge and sort by date descending
+        return articles.sort((a, b) =>
+            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
+
+        // ... existing code ...
+        return articles.sort((a, b) =>
+            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
+
         return articles.sort((a, b) =>
             new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
         );

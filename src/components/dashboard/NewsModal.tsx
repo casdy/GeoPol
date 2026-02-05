@@ -112,45 +112,58 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                         </div>
                     </div>
 
+                    {/* Article Body Content */}
+                    <div className="mb-8 space-y-4">
+                        <div className="prose prose-invert prose-sm max-w-none">
+                            {article.content ? (
+                                <div className="whitespace-pre-wrap leading-relaxed text-neutral-300 font-serif text-sm">
+                                    {article.content}
+                                </div>
+                            ) : (
+                                <div className="text-neutral-400 italic">
+                                    {article.description || "No full content available available from source."}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* AI Intelligence Briefing Section */}
-                    <div className="mb-8">
+                    <div className="mb-8 border-t border-neutral-800 pt-6">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-bold text-neutral-300 flex items-center gap-2 uppercase tracking-wide">
                                 <Bot className="w-4 h-4 text-orange-500" />
-                                Intelligence Brief
+                                AI Intelligence Briefing
                             </h3>
                             {!summary && !isSummarizing && (
                                 <button
                                     onClick={handleSummarize}
                                     className="flex items-center gap-1.5 text-[10px] font-bold bg-orange-900/10 hover:bg-orange-600 hover:text-black text-orange-500 border border-orange-500/50 px-3 py-1 transition-all uppercase tracking-widest"
                                 >
-                                    <Sparkles className="w-3 h-3" /> Generate Report
+                                    <Sparkles className="w-3 h-3" /> Generate Summary
                                 </button>
                             )}
                         </div>
 
-                        <div className="bg-black/30 border border-dashed border-neutral-700 rounded-sm p-4 min-h-[120px]">
-                            {isSummarizing ? (
-                                <div className="h-full flex flex-col items-center justify-center gap-3 text-neutral-500 py-4 font-mono text-xs">
-                                    <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-                                    <span className="animate-pulse">DECRYPTING CONTENT...</span>
-                                </div>
-                            ) : error ? (
-                                <div className="text-red-500 text-xs font-mono text-center py-2">
-                                    // ERROR: {error}
-                                </div>
-                            ) : summary ? (
-                                <div className="prose prose-invert prose-sm max-w-none">
-                                    <div className="whitespace-pre-wrap leading-relaxed text-neutral-300 font-mono text-xs">
-                                        {summary}
+                        {(summary || isSummarizing || error) && (
+                            <div className="bg-black/30 border border-dashed border-neutral-700 rounded-sm p-4 min-h-[100px] animate-in slide-in-from-top-2">
+                                {isSummarizing ? (
+                                    <div className="h-full flex flex-col items-center justify-center gap-3 text-neutral-500 py-4 font-mono text-xs">
+                                        <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                                        <span className="animate-pulse">ANALYZING CONTENT...</span>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="text-neutral-600 text-xs font-mono text-center py-6">
-                                    // SYSTEM STANDBY: AWAITING GENERATION COMMAND
-                                </div>
-                            )}
-                        </div>
+                                ) : error ? (
+                                    <div className="text-red-500 text-xs font-mono text-center py-2">
+                                        // ERROR: {error}
+                                    </div>
+                                ) : (
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <div className="whitespace-pre-wrap leading-relaxed text-orange-200/90 font-mono text-xs">
+                                            {summary}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Area */}

@@ -16,7 +16,6 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // Debouced state
   const [isCrisisMode, setIsCrisisMode] = useState(false);
-  // const [colorMode, setColorMode] = useState<'light' | 'dark'>('dark'); // Removed: Enforcing Flashpoint Dark Mode
   const [activeArticle, setActiveArticle] = useState<PulseItem | null>(null);
 
   // Debounce search query to prevent excessive API calls
@@ -88,7 +87,7 @@ export default function Dashboard() {
     };
 
   return (
-    <main className={`min-h-screen ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans`}>
+    <main className={`min-h-screen ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans pb-20`}>
 
       <NewsModal article={activeArticle} onClose={() => setActiveArticle(null)} />
 
@@ -196,6 +195,7 @@ export default function Dashboard() {
 
         </div>
       </div>
+
     </main>
   );
 }

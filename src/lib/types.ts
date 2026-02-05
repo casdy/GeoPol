@@ -9,6 +9,8 @@ export interface PulseItem {
   imageUrl?: string;
   type: 'article' | 'video';
   tags: string[];
+  description?: string;
+  content?: string;
 }
 
 export interface FetchOptions {
