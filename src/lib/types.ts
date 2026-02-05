@@ -17,4 +17,5 @@ export interface FetchOptions {
   query?: string;
   region?: Region;
   isCrisisMode?: boolean;
+  page?: number;
 }

@@ -1,6 +1,6 @@
 'use server';
 
-import { PulseItem, FetchOptions, Region } from './types';
+import { PulseItem, Region, FetchOptions } from './types';
 
 const NEWS_API_URL = 'https://newsapi.org/v2/everything';
 
@@ -121,7 +121,7 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
             const newsData = await newsRes.json();
             // Normalize NewsAPI
             articles = (newsData.articles || []).map((art: any, idx: number) => ({
-                id: `art-${idx}-${Date.now()}`,
+                id: art.url || `art-${idx}`, // Use URL as stable ID
                 title: art.title,
                 source: art.source.name,
                 publishedAt: art.publishedAt,
@@ -154,5 +154,125 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
     } catch (error) {
         console.error("API Fetch Error:", error);
         return getMockResponse(); // Fallback to mock on error
+    }
+}
+
+// GNews.io Integration
+export async function fetchGNews(category: string = 'general', page: number = 1): Promise<PulseItem[]> {
+    try {
+        const apiKey = process.env.G_NEWS_API;
+        if (!apiKey) return [];
+
+        const url = `https://gnews.io/api/v4/top-headlines?category=${category}&lang=en&country=us&page=${page}&max=20&apikey=${apiKey}`;
+
+        const res = await fetch(url, { next: { revalidate: 300 } });
+        if (!res.ok) {
+            console.warn(`GNews API Error: ${res.statusText}`);
+            return [];
+        }
+
+        const data = await res.json();
+        if (!data.articles) return [];
+
+        return data.articles.map((art: any, idx: number) => ({
+            id: art.url || `gnews-${idx}`,
+            title: art.title,
+            source: art.source.name,
+            publishedAt: art.publishedAt,
+            url: art.url,
+            imageUrl: art.image,
+            type: 'article',
+            tags: ['NEWS', category.toUpperCase()],
+            description: art.description,
+            content: art.content
+        }));
+
+    } catch (error) {
+        console.error("GNews Fetch Error:", error);
+        return [];
+    }
+}
+
+// Weather Integration
+export interface WeatherData {
+    id: number;
+    name: string;
+    temp: number;
+    condition: string;
+    humidity: number;
+    windSpeed: number;
+    feelsLike: number;
+    description: string;
+    pressure: number;
+    country: string;
+    coordinates: { lat: number; lon: number };
+}
+
+const STRATEGIC_CITIES = [
+    5128581, // New York
+    2643743, // London
+    1850147, // Tokyo
+    524901,  // Moscow
+    1816670, // Beijing
+    292223,  // Dubai
+    2950159, // Berlin
+    2988507, // Paris
+    1880252, // Singapore
+    2147714, // Sydney
+    360630,  // Cairo
+    3435910, // Buenos Aires
+];
+
+// Mock Weather Data
+const MOCK_WEATHER: WeatherData[] = [
+    { id: 1, name: "New York", temp: 12, condition: "Cloudy", humidity: 60, windSpeed: 5.2, feelsLike: 10, description: "overcast clouds", pressure: 1012, country: "US", coordinates: { lat: 40.7, lon: -74.0 } },
+    { id: 2, name: "London", temp: 8, condition: "Rain", humidity: 82, windSpeed: 6.5, feelsLike: 5, description: "light rain", pressure: 1008, country: "GB", coordinates: { lat: 51.5, lon: -0.1 } },
+    { id: 3, name: "Tokyo", temp: 18, condition: "Clear", humidity: 45, windSpeed: 3.1, feelsLike: 18, description: "clear sky", pressure: 1015, country: "JP", coordinates: { lat: 35.6, lon: 139.7 } },
+    { id: 4, name: "Moscow", temp: -2, condition: "Snow", humidity: 70, windSpeed: 4.0, feelsLike: -6, description: "light snow", pressure: 1020, country: "RU", coordinates: { lat: 55.7, lon: 37.6 } },
+    { id: 5, name: "Beijing", temp: 15, condition: "Haze", humidity: 55, windSpeed: 2.8, feelsLike: 14, description: "haze", pressure: 1010, country: "CN", coordinates: { lat: 39.9, lon: 116.4 } }
+];
+
+export async function fetchWeather(): Promise<WeatherData[]> {
+    try {
+        const apiKey = process.env.OPEN_WEATHER_API_KEY;
+        if (!apiKey) {
+            console.warn("Weather API Key missing. Using Mock Data.");
+            return MOCK_WEATHER;
+        }
+
+        // Shuffle and pick 5
+        const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
+        const selectedIds = shuffled.slice(0, 5).join(',');
+
+        const url = `https://api.openweathermap.org/data/2.5/group?id=${selectedIds}&units=metric&appid=${apiKey}`;
+
+        const res = await fetch(url, { next: { revalidate: 60 } });
+
+        if (!res.ok) {
+            console.warn(`Weather API Error: ${res.status} ${res.statusText}. Using Mock Data.`);
+            return MOCK_WEATHER;
+        }
+
+        const data = await res.json();
+
+        if (!data.list) return MOCK_WEATHER;
+
+        return data.list.map((city: any) => ({
+            id: city.id,
+            name: city.name,
+            temp: Math.round(city.main.temp),
+            condition: city.weather[0].main,
+            humidity: city.main.humidity,
+            windSpeed: city.wind.speed,
+            feelsLike: Math.round(city.main.feels_like),
+            description: city.weather[0].description,
+            pressure: city.main.pressure,
+            country: city.sys.country,
+            coordinates: city.coord
+        }));
+
+    } catch (error) {
+        console.error("Weather API Critical Error:", error);
+        return MOCK_WEATHER;
     }
 }

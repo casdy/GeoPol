@@ -6,7 +6,7 @@ import * as cheerio from 'cheerio';
 
 import { rateLimit } from '@/lib/rate-limit';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
 const limiter = rateLimit(5, 60 * 1000); // 5 requests per minute
 
 export async function summarizeArticle(url: string) {
@@ -24,9 +24,9 @@ export async function summarizeArticle(url: string) {
     }
 
     try {
-        if (!process.env.GEMINI_API_KEY) {
+        if (!process.env.API_KEY) {
             // Log missing key internally, return generic error
-            console.error('SERVER CONFIG ERROR: GEMINI_API_KEY is missing.');
+            console.error('SERVER CONFIG ERROR: API_KEY is missing.');
             return { error: 'Service temporarily unavailable.' };
         }
 
@@ -82,5 +82,65 @@ export async function summarizeArticle(url: string) {
 
         // Return a sanitized, generic error to the client
         return { error: 'An processing error occurred. Our team has been notified.' };
+    }
+}
+
+export async function fetchArticleContent(url: string) {
+    try {
+        if (!url) return { error: 'Invalid URL' };
+
+        // Rate limit check (optional, but good practice if heavily used)
+        const headerPayload = await headers();
+        const ip = headerPayload.get('x-forwarded-for') || 'anonymous';
+        if (!limiter.check(ip)) {
+            return { error: 'Rate limit exceeded. Try again shortly.' };
+        }
+
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            next: { revalidate: 3600 }
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch article');
+
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        // Remove unwanted elements
+        $('script, style, nav, header, footer, iframe, .ad, .advertisement, .social-share, .comments').remove();
+
+        // Target common article bodies
+        const selectors = [
+            'article',
+            '[itemprop="articleBody"]',
+            '.article-body',
+            '.story-body',
+            '.post-content',
+            '.entry-content',
+            'main'
+        ];
+
+        let content = '';
+        for (const selector of selectors) {
+            const el = $(selector);
+            if (el.length > 0) {
+                // Get paragraphs for better formatting
+                content = el.find('p').map((_, p) => $(p).text().trim()).get().join('\n\n');
+                if (content.length > 500) break; // Found a good candidate
+            }
+        }
+
+        // Fallback if structured selectors fail
+        if (content.length < 200) {
+            content = $('body').find('p').map((_, p) => $(p).text().trim()).get().join('\n\n');
+        }
+
+        return { content: content.slice(0, 20000) }; // Limit size
+
+    } catch (error) {
+        console.error('Fetch Content Error:', error);
+        return { error: 'Unable to retrieve full content from source.' };
     }
 }

@@ -3,20 +3,28 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PulseItem, Region } from '@/lib/types';
-import { fetchPulseData } from '@/lib/api';
+import { fetchPulseData, fetchGNews } from '@/lib/api';
 import WorldMap from '@/components/dashboard/WorldMap';
 import LiveWire from '@/components/dashboard/LiveWire';
 import { ItemCard } from '@/components/dashboard/ItemCard';
 import NewsModal from '@/components/dashboard/NewsModal';
 import CrisisToggle from '@/components/dashboard/CrisisToggle';
-import { Loader2, Search, Radar, Zap, Globe } from 'lucide-react';
+import HamburgerMenu from '@/components/dashboard/HamburgerMenu';
+import WeatherWidget from '@/components/dashboard/WeatherWidget';
+import { Loader2, Search, Radar, Zap, Globe, Menu, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Dashboard() {
   const [region, setRegion] = useState<Region>('Global');
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // Debouced state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isCrisisMode, setIsCrisisMode] = useState(false);
   const [activeArticle, setActiveArticle] = useState<PulseItem | null>(null);
+
+  // New States
+  const [category, setCategory] = useState('general');
+  const [page, setPage] = useState(1);
+  const [allArticles, setAllArticles] = useState<PulseItem[]>([]);
 
   // Debounce search query to prevent excessive API calls
   useEffect(() => {
@@ -26,13 +34,38 @@ export default function Dashboard() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['pulseData', region, debouncedSearchQuery, isCrisisMode],
-    queryFn: () => fetchPulseData({ region, query: debouncedSearchQuery, isCrisisMode }),
+  // Main Feed (NewsAPI / Mock)
+  const { data: newData, isLoading, isFetching } = useQuery({
+    queryKey: ['pulseData', region, debouncedSearchQuery, isCrisisMode, page],
+    queryFn: () => fetchPulseData({ region, query: debouncedSearchQuery, isCrisisMode, page }),
     refetchInterval: isCrisisMode ? 15000 : 60000,
   });
 
-  const allArticles = data || [];
+  // Ground News Feed (Sidebar)
+  const { data: gNewsData, isLoading: isGNewsLoading } = useQuery({
+    queryKey: ['gNewsData', category],
+    queryFn: () => fetchGNews(category),
+    refetchInterval: 300000, // 5 min
+  });
+
+  // Append new pages
+  useEffect(() => {
+    if (newData) {
+      if (page === 1) {
+        setAllArticles(newData);
+      } else {
+        setAllArticles(prev => {
+          const newIds = new Set(newData.map(i => i.id));
+          return [...prev, ...newData.filter(i => !newIds.has(i.id))];
+        });
+      }
+    }
+  }, [newData, page]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setPage(1);
+  }, [region, debouncedSearchQuery, isCrisisMode]);
 
   // Dynamic Layout: Balance Main (2 cols) and Sidebar (1 col) heights.
   // Ratio: 2 items in Main (1 row) ~ 1 item in Sidebar (1 row).
@@ -40,18 +73,12 @@ export default function Dashboard() {
   // Total = 2S + S = 3S. => S = Total / 3. M = 2/3 Total.
   // We ensure 'mainCount' is even to keep the grid balanced.
 
-  const totalItems = allArticles.length;
-  let mainCount = Math.floor(totalItems * (2 / 3));
-  if (mainCount % 2 !== 0) mainCount -= 1; // Ensure even number for 2-col grid
-
-  // Safe bounds check
-  if (mainCount < 0) mainCount = 0;
-
-  const mainStories = allArticles.slice(0, mainCount);
-  const feedItems = allArticles.slice(mainCount);
+  // Layout Logic
+  const mainStories = allArticles;
+  const sidebarStories = gNewsData || [];
 
   // Latest 10 for ticker
-  const liveWireItems = allArticles.slice(0, 10);
+  const liveWireItems = [...allArticles, ...sidebarStories].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()).slice(0, 10);
 
   // FLASHPOINT THEME ENGINE
   const theme = isCrisisMode
@@ -94,7 +121,12 @@ export default function Dashboard() {
       {/* Header */}
       <header className={`border-b ${theme.border} ${theme.headerBg} backdrop-blur-md sticky top-0 z-50 transition-colors duration-700`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 group">
+          <div className="flex items-center gap-4 group">
+            <HamburgerMenu
+              categories={['general', 'world', 'nation', 'business', 'technology', 'entertainment', 'sports', 'science', 'health']}
+              selectedCategory={category}
+              onSelectCategory={setCategory}
+            />
             <div className="relative">
               <Radar className={`w-8 h-8 ${theme.accent} ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
               <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
@@ -156,39 +188,93 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Main Major Projects / Headlines */}
-          <div className="lg:col-span-8 space-y-4">
+          {/* Left Column: Weather Widget (Vertical Strip) */}
+          <aside className="lg:col-span-2 hidden lg:block">
+            <div className="sticky top-24">
+              <WeatherWidget />
+            </div>
+          </aside>
+
+          {/* Center Column: Main Headlines */}
+          <div className="lg:col-span-5 space-y-4">
             <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
               <Globe className="w-4 h-4 text-orange-500" />
               Headlines
             </h2>
 
-            {isLoading ? (
+            {isLoading && page === 1 ? (
               <div className="flex justify-center py-20"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
             ) : (
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                {mainStories.map(article => (
-                  <ItemCard key={article.id} item={article} onPlay={(item) => setActiveArticle(item)} />
-                ))}
-                {mainStories.length === 0 && <p className="text-neutral-500 col-span-2 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
-              </div>
+              <>
+                {/* Internal 2-Column Grid for Headlines */}
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
+                  <AnimatePresence mode='popLayout'>
+                    {mainStories.map((article, i) => (
+                      <motion.div
+                        key={article.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                      >
+                        <ItemCard item={article} onPlay={(item) => setActiveArticle(item)} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                {mainStories.length === 0 && <p className="text-neutral-500 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
+
+                {/* Pagination */}
+                {mainStories.length > 0 && (
+                  <div className="flex justify-center pt-8">
+                    <button
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={isFetching}
+                      className={`flex items-center gap-2 px-6 py-3 ${theme.cardBg} border ${theme.border} ${theme.text} hover:${theme.accent} hover:border-orange-500/50 rounded-sm font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-50`}
+                    >
+                      {isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronDown className="w-4 h-4" />}
+                      {isFetching ? 'Loading Data...' : 'Load More Reports'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Sidebar Intelligence Feed */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* Right Column: Ground News Feed */}
+          <div className="lg:col-span-5 space-y-6">
             <div className="sticky top-24 space-y-6">
               <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
                 <Zap className="w-4 h-4 text-orange-500" />
-                Intelligence Feed
+                GROUND NEWS
               </h2>
-              <div className={`space-y-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                {feedItems.map(item => (
-                  <ItemCard key={item.id} item={item} onPlay={(i) => setActiveArticle(i)} />
-                ))}
-                {feedItems.length === 0 && !isLoading && <p className="text-neutral-600 text-center text-[10px] font-mono uppercase tracking-widest pt-4">No additional feed data.</p>}
+
+              {/* Internal 2-Column Grid for Ground News */}
+              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
+                {isGNewsLoading ? (
+                  <div className="col-span-2 flex justify-center py-10"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
+                ) : (
+                  <AnimatePresence mode='popLayout'>
+                    {sidebarStories.map((item, i) => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.05 }}
+                      >
+                        <ItemCard item={item} onPlay={(i) => setActiveArticle(i)} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
+                {sidebarStories.length === 0 && !isGNewsLoading && <p className="col-span-2 text-neutral-600 text-center text-[10px] font-mono uppercase tracking-widest pt-4">No additional feed data.</p>}
+              </div>
+
+              {/* Mobile Weather Fallback (Optional, but good UX if left col is hidden on mobile) */}
+              <div className="lg:hidden">
+                <WeatherWidget />
               </div>
             </div>
           </div>
