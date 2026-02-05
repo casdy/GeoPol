@@ -22,9 +22,8 @@ export default function Dashboard() {
   const [activeArticle, setActiveArticle] = useState<PulseItem | null>(null);
 
   // New States
+  // const [category, setCategory] = useState('general'); // Keep category? Yes.
   const [category, setCategory] = useState('general');
-  const [page, setPage] = useState(1);
-  const [allArticles, setAllArticles] = useState<PulseItem[]>([]);
 
   // Debounce search query to prevent excessive API calls
   useEffect(() => {
@@ -36,8 +35,8 @@ export default function Dashboard() {
 
   // Main Feed (NewsAPI / Mock)
   const { data: newData, isLoading, isFetching } = useQuery({
-    queryKey: ['pulseData', region, debouncedSearchQuery, isCrisisMode, page],
-    queryFn: () => fetchPulseData({ region, query: debouncedSearchQuery, isCrisisMode, page }),
+    queryKey: ['pulseData', region, debouncedSearchQuery, isCrisisMode],
+    queryFn: () => fetchPulseData({ region, query: debouncedSearchQuery, isCrisisMode }),
     refetchInterval: isCrisisMode ? 15000 : 60000,
   });
 
@@ -48,25 +47,6 @@ export default function Dashboard() {
     refetchInterval: 300000, // 5 min
   });
 
-  // Append new pages
-  useEffect(() => {
-    if (newData) {
-      if (page === 1) {
-        setAllArticles(newData);
-      } else {
-        setAllArticles(prev => {
-          const newIds = new Set(newData.map(i => i.id));
-          return [...prev, ...newData.filter(i => !newIds.has(i.id))];
-        });
-      }
-    }
-  }, [newData, page]);
-
-  // Reset pagination on filter change
-  useEffect(() => {
-    setPage(1);
-  }, [region, debouncedSearchQuery, isCrisisMode]);
-
   // Dynamic Layout: Balance Main (2 cols) and Sidebar (1 col) heights.
   // Ratio: 2 items in Main (1 row) ~ 1 item in Sidebar (1 row).
   // Total Items = M + S. We want M/2 = S. => M = 2S.
@@ -74,11 +54,11 @@ export default function Dashboard() {
   // We ensure 'mainCount' is even to keep the grid balanced.
 
   // Layout Logic
-  const mainStories = allArticles;
+  const mainStories = newData || [];
   const sidebarStories = gNewsData || [];
 
   // Latest 10 for ticker
-  const liveWireItems = [...allArticles, ...sidebarStories].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()).slice(0, 10);
+  const liveWireItems = [...mainStories, ...sidebarStories].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()).slice(0, 10);
 
   // FLASHPOINT THEME ENGINE
   const theme = isCrisisMode
@@ -204,7 +184,7 @@ export default function Dashboard() {
               Headlines
             </h2>
 
-            {isLoading && page === 1 ? (
+            {isLoading ? (
               <div className="flex justify-center py-20"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
             ) : (
               <>
@@ -224,20 +204,6 @@ export default function Dashboard() {
                   </AnimatePresence>
                 </div>
                 {mainStories.length === 0 && <p className="text-neutral-500 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
-
-                {/* Pagination */}
-                {mainStories.length > 0 && (
-                  <div className="flex justify-center pt-8">
-                    <button
-                      onClick={() => setPage(p => p + 1)}
-                      disabled={isFetching}
-                      className={`flex items-center gap-2 px-6 py-3 ${theme.cardBg} border ${theme.border} ${theme.text} hover:${theme.accent} hover:border-orange-500/50 rounded-sm font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-50`}
-                    >
-                      {isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronDown className="w-4 h-4" />}
-                      {isFetching ? 'Loading Data...' : 'Load More Reports'}
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </div>

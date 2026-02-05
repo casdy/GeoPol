@@ -55,6 +55,7 @@ const generateMockData = (): PulseItem[] => { // Realistic fallback data when AP
         The summit concluded with a joint statement pledging further cooperation on these critical issues. However, analysts remain skeptical about the implementation timeline given the current geopolitical climate.
     `;
 
+    // Generate Mock Data (Original Size)
     return headlines.map((item, i) => ({
         id: `mock-${i}`,
         title: item.title,
@@ -84,16 +85,13 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
                 item.title.toLowerCase().includes(lowerQ) ||
                 (item.description || '').toLowerCase().includes(lowerQ)
             );
-            // If strictly searching, don't fallback/pad with random stuff unless empty? 
-            // Actually, if search yields nothing, showing nothing is better than showing unrelated stuff for "only results related" request.
             return filtered;
         }
 
         // 2. Filter by Region (if no query or query empty)
-        if (!options.region || options.region === 'Global') {
-            return MOCK_DATA;
+        if (options.region && options.region !== 'Global') {
+            filtered = MOCK_DATA.filter(item => item.tags.includes(options.region!));
         }
-        filtered = MOCK_DATA.filter(item => item.tags.includes(options.region!));
 
         // If not enough items, pad with Global items to preserve layout
         if (filtered.length < 4) {
@@ -227,23 +225,23 @@ export interface WeatherData {
 }
 
 const STRATEGIC_CITIES = [
-    5128581, // New York
-    2643743, // London
-    1850147, // Tokyo
-    524901,  // Moscow
-    1816670, // Beijing
-    292223,  // Dubai
-    2950159, // Berlin
-    2988507, // Paris
-    1880252, // Singapore
-    2147714, // Sydney
-    360630,  // Cairo
-    3435910, // Buenos Aires
-    745044,  // Istanbul
-    1275339, // Mumbai
-    1835848, // Seoul
-    3451190, // Rio de Janeiro
-    2332459, // Lagos
+    "New York",
+    "London",
+    "Tokyo",
+    "Moscow",
+    "Beijing",
+    "Dubai",
+    "Berlin",
+    "Paris",
+    "Singapore",
+    "Sydney",
+    "Cairo",
+    "Buenos Aires",
+    "Istanbul",
+    "Mumbai",
+    "Seoul",
+    "Rio de Janeiro",
+    "Lagos",
 ];
 
 // Mock Weather Data
@@ -262,43 +260,48 @@ const MOCK_WEATHER: WeatherData[] = [
 
 export async function fetchWeather(): Promise<WeatherData[]> {
     try {
-        // Updated to match User's .env.local
-        const apiKey = process.env.WEATHER_API_KEY || process.env.OPEN_WEATHER_API_KEY;
+        const apiKey = process.env.WEATHER_API_KEY;
         if (!apiKey) {
-            console.warn("Weather API Key missing (WEATHER_API_KEY). Using Mock Data.");
+            console.warn("Weather API Key missing. Using Mock Data.");
             return MOCK_WEATHER;
         }
 
         // Shuffle and pick 10
         const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
-        const selectedIds = shuffled.slice(0, 10).join(',');
+        const selectedCities = shuffled.slice(0, 10);
 
-        const url = `https://api.openweathermap.org/data/2.5/group?id=${selectedIds}&units=metric&appid=${apiKey}`;
+        const weatherPromises = selectedCities.map(async (city) => {
+            const url = `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}`;
+            try {
+                const res = await fetch(url, { next: { revalidate: 600 } });
+                if (!res.ok) return null;
+                const data = await res.json();
+                
+                return {
+                    id: Math.floor(Math.random() * 100000), // Generate ID since WeatherAPI doesn't return stable numeric IDs
+                    name: data.location.name,
+                    temp: Math.round(data.current.temp_c),
+                    condition: data.current.condition.text,
+                    humidity: data.current.humidity,
+                    windSpeed: parseFloat((data.current.wind_kph / 3.6).toFixed(1)), // Convert kph to m/s
+                    feelsLike: Math.round(data.current.feelslike_c),
+                    description: data.current.condition.text.toLowerCase(),
+                    pressure: data.current.pressure_mb,
+                    country: data.location.country,
+                    coordinates: { lat: data.location.lat, lon: data.location.lon }
+                } as WeatherData;
+            } catch (err) {
+                console.error(`Failed to fetch weather for ${city}`, err);
+                return null;
+            }
+        });
 
-        const res = await fetch(url, { next: { revalidate: 600 } });
+        const results = await Promise.all(weatherPromises);
+        const validResults = results.filter((w): w is WeatherData => w !== null);
 
-        if (!res.ok) {
-            console.warn(`Weather API Error: ${res.status} ${res.statusText}. Using Mock Data.`);
-            return MOCK_WEATHER;
-        }
-
-        const data = await res.json();
-
-        if (!data.list) return MOCK_WEATHER;
-
-        return data.list.map((city: any) => ({
-            id: city.id,
-            name: city.name,
-            temp: Math.round(city.main.temp),
-            condition: city.weather[0].main,
-            humidity: city.main.humidity,
-            windSpeed: city.wind.speed,
-            feelsLike: Math.round(city.main.feels_like),
-            description: city.weather[0].description,
-            pressure: city.main.pressure,
-            country: city.sys.country,
-            coordinates: city.coord
-        }));
+        if (validResults.length === 0) return MOCK_WEATHER;
+        
+        return validResults;
 
     } catch (error) {
         console.error("Weather API Critical Error:", error);
