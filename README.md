@@ -80,4 +80,5 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 - **Backend**: Implemented "Provider Rotation" service to handle API limits gracefully.
 - **Monetization**: Integrated "Premium Paywall" modal for AI Summary generation.
 - **UI Architecture**: Implemented React Portals for modal rendering to ensure correct stacking contexts and Z-index layering.
+- **Search Engine**: Refined logic to prioritize direct user queries, bypassing default filters for unrestricted keyword searching.
 - **Micro-Interactions**: Enhanced hover states, card animations, and modal transitions.

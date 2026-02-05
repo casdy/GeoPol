@@ -76,11 +76,25 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
 
     // Helper to filter mock data
     const getMockResponse = () => {
+        // 1. Filter by Query if present
+        let filtered = MOCK_DATA;
+        if (options.query && options.query.trim().length > 0) {
+            const lowerQ = options.query.toLowerCase();
+            filtered = MOCK_DATA.filter(item =>
+                item.title.toLowerCase().includes(lowerQ) ||
+                (item.description || '').toLowerCase().includes(lowerQ)
+            );
+            // If strictly searching, don't fallback/pad with random stuff unless empty? 
+            // Actually, if search yields nothing, showing nothing is better than showing unrelated stuff for "only results related" request.
+            return filtered;
+        }
+
+        // 2. Filter by Region (if no query or query empty)
         if (!options.region || options.region === 'Global') {
             return MOCK_DATA;
         }
-        // Filter by region in tags
-        const filtered = MOCK_DATA.filter(item => item.tags.includes(options.region!));
+        filtered = MOCK_DATA.filter(item => item.tags.includes(options.region!));
+
         // If not enough items, pad with Global items to preserve layout
         if (filtered.length < 4) {
             return [...filtered, ...MOCK_DATA.filter(i => i.tags.includes('Global'))];
@@ -104,7 +118,8 @@ export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]
         // SECURITY: Sanitize user input to prevent injection
         const safeQuery = options.query ? options.query.replace(/[<>{}]/g, '').trim() : '';
 
-        query = safeQuery ? `${safeQuery} AND (${keyword})` : keyword;
+        // REFINE: If user types a query, prioritize it 100% over the region keyword.
+        query = safeQuery ? safeQuery : keyword;
     }
 
     try {
