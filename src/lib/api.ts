@@ -1,215 +1,337 @@
 'use server';
 
-import { PulseItem, Region, FetchOptions } from './types';
+import { Article, Video, BiasMeta, FetchOptions } from './types';
 
-const NEWS_API_URL = 'https://newsapi.org/v2/everything';
+const TIER_1_DOMAINS = [
+    "reuters.com",
+    "apnews.com",
+    "bbc.com",
+    "bbc.co.uk",
+    "bloomberg.com",
+    "aljazeera.com",
+    "ft.com",
+    "wsj.com",
+    "dw.com",
+    "france24.com",
+    "nikkei.com",
+    "theguardian.com"
+];
 
-// Keyword strategies for regions
-const REGION_KEYWORDS: Record<Region, string> = {
-    'Global': 'geopolitics OR "foreign policy" OR "Security Council" OR "International Relations"',
-    'Middle East': 'Israel OR Gaza OR Iran OR "Middle East" OR Syria OR Yemen OR "Saudi Arabia"',
-    'Eastern Europe': 'Ukraine OR Russia OR NATO OR "Eastern Europe" OR Belarus OR Baltics',
-    'Asia Pacific': 'China OR Taiwan OR "South China Sea" OR "North Korea" OR Japan OR Philippines',
-    'Americas': '"United States" OR Brazil OR Venezuela OR NAFTA OR "Latin America" OR Mexico',
-    'Africa': 'Sudan OR Congo OR "South Africa" OR Niger OR Ethiopia OR "Horn of Africa"',
-    'Arctic': 'Arctic OR "Polar Region" OR "Ice Melt" OR "Northern Sea Route" OR Greenland',
-    'South Asia': 'India OR Pakistan OR Afghanistan OR Kashmir OR Bangladesh',
-    'Central Asia': 'Kazakhstan OR Uzbekistan OR Kyrgyzstan OR Tajikistan OR Turkmenistan',
-    'Latin America': 'Brazil OR Argentina OR Venezuela OR Colombia OR "Latin America"',
+const SOURCE_INTELLIGENCE_PROFILE: Record<string, Partial<BiasMeta>> = {
+    "reuters.com": { sourceReliability: "high", ownershipType: "publicly_traded", countryOfOrigin: "UK", geopoliticalAlignment: "western" },
+    "apnews.com": { sourceReliability: "high", ownershipType: "private", countryOfOrigin: "USA", geopoliticalAlignment: "western" },
+    "bbc.com": { sourceReliability: "high", ownershipType: "state", countryOfOrigin: "UK", geopoliticalAlignment: "western" },
+    "bbc.co.uk": { sourceReliability: "high", ownershipType: "state", countryOfOrigin: "UK", geopoliticalAlignment: "western" },
+    "bloomberg.com": { sourceReliability: "high", ownershipType: "private", countryOfOrigin: "USA", geopoliticalAlignment: "western" },
+    "aljazeera.com": { sourceReliability: "high", ownershipType: "state", countryOfOrigin: "Qatar", geopoliticalAlignment: "non_western" },
+    "ft.com": { sourceReliability: "high", ownershipType: "publicly_traded", countryOfOrigin: "UK", geopoliticalAlignment: "western" },
+    "wsj.com": { sourceReliability: "medium", ownershipType: "publicly_traded", countryOfOrigin: "USA", geopoliticalAlignment: "western" },
+    "dw.com": { sourceReliability: "high", ownershipType: "state", countryOfOrigin: "Germany", geopoliticalAlignment: "western" },
+    "france24.com": { sourceReliability: "high", ownershipType: "state", countryOfOrigin: "France", geopoliticalAlignment: "western" },
+    "nikkei.com": { sourceReliability: "high", ownershipType: "private", countryOfOrigin: "Japan", geopoliticalAlignment: "western" },
+    "theguardian.com": { sourceReliability: "medium", ownershipType: "private", countryOfOrigin: "UK", geopoliticalAlignment: "western" }
 };
 
-// Expanded Mock Data Generator
-const generateMockData = (): PulseItem[] => { // Realistic fallback data when API quota is exceeded
-    const headlines = [
-        { title: "Global energy summit concludes with new carbon tax agreement", region: 'Global' },
-        { title: "Tensions rise in South China Sea as naval exercises begin", region: 'Asia Pacific' },
-        { title: "European Union announces new trade sanctions pacakge", region: 'Eastern Europe' },
-        { title: "Cybersecurity firm detects massive botnet targeting critical infrastructure", region: 'Global' },
-        { title: "Middle East peace talks show tentative signs of progress", region: 'Middle East' },
-        { title: "Satellite imagery reveals new military construction in Arctic region", region: 'Arctic' },
-        { title: "OPEC+ decides to maintain current oil output levels despite pressure", region: 'Middle East' },
-        { title: "Tech giants testify before Congress on AI safety regulations", region: 'Americas' },
-        { title: "Rare earth mineral discovery in Africa sparks geopolitical interest", region: 'Africa' },
-        { title: "NATO conducts large-scale joint operations drill in Eastern Europe", region: 'Eastern Europe' },
-        { title: "Food security crisis looms as grain deal negotiations stall", region: 'Global' },
-        { title: "Semiconductor supply chain diversification accelerates across Asia", region: 'Asia Pacific' },
-        { title: "Diplomatic row escalates over border dispute in Central Asia", region: 'Central Asia' },
-        { title: "UN report warns of accelerating climate migration patterns", region: 'Global' },
-        { title: "Space debris collision risks threaten commercial satellite networks", region: 'Global' },
-        { title: "Brazil hosts major summit on Amazon preservation efforts", region: 'Latin America' },
-        { title: "India launches ambitious new space exploration mission", region: 'South Asia' }
-    ];
+const SENSATIONAL_WORDS = ["shocking", "explosive", "devastating", "historic", "massive", "catastrophic", "dramatic", "unbelievable"];
+const NOISE_CATEGORIES = ["sports", "entertainment", "celebrity", "gossip", "lifestyle", "fashion", "movie", "tv", "music"];
 
-    const sources = ['Reuters', 'AP News', 'Al Jazeera', 'BBC', 'Bloomberg', 'Foreign Policy'];
+export interface AggregationResult {
+    news: Article[];
+    videos: Video[];
+    meta: {
+        sourcesQueried: string[];
+        totalFetched: number;
+        totalAfterDedup: number;
+        mode: "monitor" | "crisis";
+    };
+}
 
-    // Mock Content Generator
-    const dummyContent = `
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+// -------------------------------------------------------------
+// UTILITIES
+// -------------------------------------------------------------
+function isRelevantGeopoliticalArticle(article: Partial<Article>): boolean {
+    const text = ((article.title || '') + ' ' + (article.description || '')).toLowerCase();
 
-        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+    for (const noise of NOISE_CATEGORIES) {
+        const regex = new RegExp(`\\b${noise}\\b`, 'i');
+        if (regex.test(text)) {
+            return false;
+        }
+    }
+    return true;
+}
 
-        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.
+function calculateSimilarity(str1: string, str2: string): number {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^\w\s]|_/g, "").replace(/\s+/g, " ").trim();
+    const words1 = new Set(normalize(str1).split(" "));
+    const words2 = new Set(normalize(str2).split(" "));
 
-        "This is a significant geometric shift involves multiple state actors," said Dr. Elena Vance, a senior analyst at the Institute for Global Policy. "The ramifications will be felt across the entire region for decades to come."
+    const stopwords = new Set(["the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for"]);
+    const filterStopwords = (set: Set<string>) => new Set([...set].filter(x => !stopwords.has(x) && x.length > 2));
 
-        The summit concluded with a joint statement pledging further cooperation on these critical issues. However, analysts remain skeptical about the implementation timeline given the current geopolitical climate.
-    `;
+    const clean1 = filterStopwords(words1);
+    const clean2 = filterStopwords(words2);
 
-    // Generate Mock Data (Original Size)
-    return headlines.map((item, i) => ({
-        id: `mock-${i}`,
-        title: item.title,
-        source: sources[i % sources.length],
-        publishedAt: new Date(Date.now() - (i * 3600000)).toISOString(),
-        url: '#',
-        type: 'article',
-        tags: [item.region, 'Geopolitics'],
-        imageUrl: `https://placehold.co/600x400/0f172a/white?text=${encodeURIComponent(item.title.split(' ').slice(0, 3).join('+'))}`,
-        description: `Breaking news from ${item.region}: ${item.title}. Experts weigh in on the potential impact as the situation develops.`,
-        content: `(Mock Full Text) ${item.title}\n\n${item.region} - ${dummyContent}`
-    }));
-};
+    if (clean1.size === 0 && clean2.size === 0) return 1;
+    if (clean1.size === 0 || clean2.size === 0) return 0;
 
-const MOCK_DATA = generateMockData();
+    const intersection = new Set([...clean1].filter(x => clean2.has(x)));
+    const union = new Set([...clean1, ...clean2]);
 
-export async function fetchPulseData(options: FetchOptions): Promise<PulseItem[]> {
-    const isMockMode = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+    return intersection.size / union.size;
+}
 
-    // Helper to filter mock data
-    const getMockResponse = () => {
-        // 1. Filter by Query if present
-        let filtered = MOCK_DATA;
-        if (options.query && options.query.trim().length > 0) {
-            const lowerQ = options.query.toLowerCase();
-            filtered = MOCK_DATA.filter(item =>
-                item.title.toLowerCase().includes(lowerQ) ||
-                (item.description || '').toLowerCase().includes(lowerQ)
-            );
-            return filtered;
+function deduplicateAndCluster(articles: Article[]): Article[] {
+    const unique: Article[] = [];
+
+    for (const article of articles) {
+        let isDuplicate = false;
+
+        for (let i = 0; i < unique.length; i++) {
+            const existing = unique[i];
+            const similarity = calculateSimilarity(article.title, existing.title);
+
+            if (similarity >= 0.75) {
+                isDuplicate = true;
+
+                const articleTier1 = TIER_1_DOMAINS.includes(article.domain);
+                const existingTier1 = TIER_1_DOMAINS.includes(existing.domain);
+
+                if (articleTier1 && !existingTier1) {
+                    unique[i] = article; // Replace with higher tier
+                } else if (articleTier1 === existingTier1) {
+                    const articleDate = new Date(article.publishedAt).getTime();
+                    const existingDate = new Date(existing.publishedAt).getTime();
+                    if (articleDate < existingDate) {
+                        unique[i] = article; // Earliest publish date
+                    }
+                }
+                break;
+            }
         }
 
-        // 2. Filter by Region (if no query or query empty)
-        if (options.region && options.region !== 'Global') {
-            filtered = MOCK_DATA.filter(item => item.tags.includes(options.region!));
+        if (!isDuplicate) {
+            unique.push(article);
         }
+    }
 
-        // If not enough items, pad with Global items to preserve layout
-        if (filtered.length < 4) {
-            return [...filtered, ...MOCK_DATA.filter(i => i.tags.includes('Global'))];
-        }
-        return filtered;
+    return unique;
+}
+
+function enrichWithBiasMetadata(article: Omit<Article, 'biasMeta'>): Article {
+    const profile = SOURCE_INTELLIGENCE_PROFILE[article.domain] || {
+        sourceReliability: "unknown",
+        ownershipType: "unknown",
+        countryOfOrigin: "unknown",
+        geopoliticalAlignment: "unknown"
     };
 
-    // Return mock data if env var is set or keys are missing
-    if (isMockMode) {
-        return new Promise((resolve) => setTimeout(() => resolve(getMockResponse()), 800));
+    const text = ((article.title || '') + ' ' + (article.description || '')).toLowerCase();
+    const words = text.split(/\s+/);
+    let matchedWords = 0;
+    for (const w of words) {
+        if (SENSATIONAL_WORDS.includes(w.replace(/[^\w]/g, ''))) {
+            matchedWords++;
+        }
     }
+    let sensationalismScore = words.length > 0 ? (matchedWords / words.length) * 10 : 0;
+    sensationalismScore = Math.min(Math.max(sensationalismScore, 0), 1);
 
-    let query = "";
-    if (options.isCrisisMode) {
-        // CRISIS OVERRIDE: Ignore region, focus on high-impact keywords
-        query = '(War OR "Nuclear Alert" OR Invasion OR "Mass Casualties" OR "Military Strike" OR "State of Emergency")';
-    } else {
-        // Standard Logic
-        const keyword = options.region ? REGION_KEYWORDS[options.region] : REGION_KEYWORDS['Global'];
+    const hasExcessiveExclamations = (article.title?.match(/!/g) || []).length >= 2;
+    const hasAllCaps = /\b[A-Z]{5,}\b/.test(article.title || '');
+    const emotionallyLoadedLanguage = hasExcessiveExclamations || hasAllCaps || matchedWords > 2;
 
-        // SECURITY: Sanitize user input to prevent injection
-        const safeQuery = options.query ? options.query.replace(/[<>{}]/g, '').trim() : '';
+    return {
+        ...article,
+        biasMeta: {
+            sourceReliability: profile.sourceReliability as any,
+            ownershipType: profile.ownershipType as any,
+            countryOfOrigin: profile.countryOfOrigin as any,
+            geopoliticalAlignment: profile.geopoliticalAlignment as any,
+            sensationalismScore,
+            emotionallyLoadedLanguage
+        }
+    } as Article;
+}
 
-        // REFINE: If user types a query, prioritize it 100% over the region keyword.
-        query = safeQuery ? safeQuery : keyword;
-    }
+// -------------------------------------------------------------
+// PROVIDERS
+// -------------------------------------------------------------
 
+function extractDomain(url: string): string {
     try {
-        // Use server-side keys (non-NEXT_PUBLIC)
-        // Fallback to NEXT_PUBLIC versions if server keys aren't set (for backward compat during migration), but prefer secure ones.
-        const newsKey = process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY;
+        const hostname = new URL(url).hostname;
+        return hostname.replace('www.', '');
+    } catch {
+        return 'unknown';
+    }
+}
 
-        const newsRes = await fetch(`${NEWS_API_URL}?q=${encodeURIComponent(query)}&apiKey=${newsKey}&language=en&sortBy=publishedAt&pageSize=40`);
+async function fetchNewsAPI(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
+    const key = process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY;
+    if (!key) throw new Error("Missing NEWS_API_KEY");
 
-        let articles: PulseItem[] = [];
+    const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=30`, {
+        headers: { 'X-Api-Key': key },
+        next: { revalidate: isCrisisMode ? 30 : 60 }
+    });
 
-        // Handle News API
-        if (newsRes.ok) {
-            const newsData = await newsRes.json();
-            // Normalize NewsAPI
-            articles = (newsData.articles || []).map((art: any, idx: number) => ({
-                id: art.url || `art-${idx}`, // Use URL as stable ID
-                title: art.title,
-                source: art.source.name,
-                publishedAt: art.publishedAt,
-                url: art.url,
-                imageUrl: art.urlToImage,
-                type: 'article',
-                tags: ['News', options.region || 'Global'],
-                description: art.description,
-                content: art.content // NewsAPI usually truncates this, but we'll map it anyway
-            }));
+    if (!res.ok) throw new Error(`NewsAPI Error: ${res.statusText}`);
+    const data = await res.json();
+
+    return (data.articles || []).map((art: any, i: number) => ({
+        id: `newsapi-${i}-${Date.now()}`,
+        title: art.title || '',
+        description: art.description || '',
+        url: art.url || '',
+        source: art.source?.name || 'Unknown',
+        domain: extractDomain(art.url),
+        publishedAt: art.publishedAt || new Date().toISOString(),
+        image: art.urlToImage,
+        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
+    }));
+}
+
+async function fetchGNews(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
+    const key = process.env.GNEWS_API_KEY || process.env.G_NEWS_API;
+    if (!key) throw new Error("Missing GNEWS_API_KEY");
+
+    const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=30&apikey=${key}`, {
+        next: { revalidate: isCrisisMode ? 30 : 60 }
+    });
+
+    if (!res.ok) throw new Error(`GNews Error: ${res.statusText}`);
+    const data = await res.json();
+
+    return (data.articles || []).map((art: any, i: number) => ({
+        id: `gnews-${i}-${Date.now()}`,
+        title: art.title || '',
+        description: art.description || '',
+        url: art.url || '',
+        source: art.source?.name || 'Unknown',
+        domain: extractDomain(art.url),
+        publishedAt: art.publishedAt || new Date().toISOString(),
+        image: art.image,
+        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
+    }));
+}
+
+async function fetchPerigon(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
+    const key = process.env.PERIGON_API_KEY || process.env.PERIGON_KEY;
+    if (!key) throw new Error("Missing PERIGON_API_KEY");
+
+    const res = await fetch(`https://api.perigon.io/v1/articles?q=${encodeURIComponent(query)}&apiKey=${key}&size=20`, {
+        next: { revalidate: isCrisisMode ? 30 : 60 }
+    });
+
+    if (!res.ok) throw new Error(`Perigon Error: ${res.statusText}`);
+    const data = await res.json();
+
+    return (data.articles || []).map((art: any, i: number) => ({
+        id: `perigon-${art.id || i}-${Date.now()}`,
+        title: art.title || '',
+        description: art.summary || art.description || '',
+        url: art.url || '',
+        source: art.source?.domain || 'Unknown',
+        domain: extractDomain(art.url),
+        publishedAt: art.pubDate || new Date().toISOString(),
+        image: art.imageUrl,
+        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
+    }));
+}
+
+// -------------------------------------------------------------
+// MAIN AGGREGATION ENGINE
+// -------------------------------------------------------------
+
+export async function getAggregatedIntelligence(options: FetchOptions): Promise<AggregationResult> {
+    const isCrisisMode = !!options.isCrisisMode;
+    const sourcesQueried: string[] = [];
+
+    let baseQuery = options.query ? options.query : "geopolitics OR international relations OR security";
+    if (isCrisisMode && !options.query) {
+        baseQuery = "War OR Strike OR Invasion OR Emergency OR Security";
+    }
+    if (options.category && options.category !== 'general') {
+        baseQuery += ` ${options.category}`;
+    }
+
+    const promises: Promise<Omit<Article, 'biasMeta'>[]>[] = [];
+    const cat = options.category || 'general';
+    const reg = options.region || 'Global';
+
+    if (process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY) {
+        sourcesQueried.push('NewsAPI');
+        promises.push(fetchNewsAPI(baseQuery, isCrisisMode, cat, reg));
+    }
+    if (process.env.GNEWS_API_KEY || process.env.G_NEWS_API) {
+        sourcesQueried.push('GNews');
+        promises.push(fetchGNews(baseQuery, isCrisisMode, cat, reg));
+    }
+    if (process.env.PERIGON_API_KEY || process.env.PERIGON_KEY) {
+        sourcesQueried.push('Perigon');
+        promises.push(fetchPerigon(baseQuery, isCrisisMode, cat, reg));
+    }
+
+    // Promise.allSettled ensures resilience if one provider fails
+    const results = await Promise.allSettled(promises);
+
+    let rawArticles: Omit<Article, 'biasMeta'>[] = [];
+
+    results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+            rawArticles = [...rawArticles, ...result.value];
         } else {
-            console.warn("News API failed (likely quota or rate limit), using fallback.");
-            return getMockResponse();
+            console.error(`Provider failed:`, result.reason);
         }
+    });
 
-        // Merge and sort by date descending
-        return articles.sort((a, b) =>
-            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        );
+    const totalFetched = rawArticles.length;
 
-        // ... existing code ...
-        return articles.sort((a, b) =>
-            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        );
+    // 1. Smart Filtering
+    let filteredArticles = rawArticles.filter(art => {
+        if (!isRelevantGeopoliticalArticle(art)) return false;
+        return true;
+    });
 
-        return articles.sort((a, b) =>
-            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        );
+    // 2. Bias Enrichment mapping
+    let enrichedArticles: Article[] = filteredArticles.map(enrichWithBiasMetadata);
 
-    } catch (error) {
-        console.error("API Fetch Error:", error);
-        return getMockResponse(); // Fallback to mock on error
-    }
-}
+    // 3. Deduplication Engine
+    let deduplicatedArticles = deduplicateAndCluster(enrichedArticles);
 
-// GNews.io Integration
-export async function fetchGNews(category: string = 'general', page: number = 1): Promise<PulseItem[]> {
-    try {
-        const apiKey = process.env.G_NEWS_API;
-        if (!apiKey) {
-            console.warn("GNews API Key missing. Using Mock Data fallback.");
-            return generateMockData().map(i => ({ ...i, source: 'GNews (Mock)' }));
-        }
+    // Sort by latest published date
+    deduplicatedArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-        const url = `https://gnews.io/api/v4/top-headlines?category=${category}&lang=en&country=us&page=${page}&max=20&apikey=${apiKey}`;
-
-        const res = await fetch(url, { next: { revalidate: 300 } });
-        if (!res.ok) {
-            console.warn(`GNews API Error: ${res.statusText}. Using Mock Data fallback.`);
-            return generateMockData().map(i => ({ ...i, source: 'GNews (Mock)' }));
-        }
-
-        const data = await res.json();
-        if (!data.articles) return [];
-
-        return data.articles.map((art: any, idx: number) => ({
-            id: art.url || `gnews-${idx}`,
-            title: art.title,
-            source: art.source.name,
-            publishedAt: art.publishedAt,
-            url: art.url,
-            imageUrl: art.image,
-            type: 'article',
-            tags: ['NEWS', category.toUpperCase()],
-            description: art.description,
-            content: art.content
+    if (deduplicatedArticles.length === 0) {
+        const mockDomain = "reuters.com";
+        deduplicatedArticles.push(enrichWithBiasMetadata({
+            id: 'mock-1',
+            title: "Global Intelligence Feed Offline or Limited",
+            description: "No secure signals received from integrated intelligence providers. Utilizing offline backups.",
+            url: "#",
+            source: "Reuters",
+            domain: mockDomain,
+            publishedAt: new Date().toISOString(),
+            tags: ["System Warning"]
         }));
-
-    } catch (error) {
-        console.error("GNews Fetch Error:", error);
-        return [];
     }
+
+    return {
+        news: deduplicatedArticles,
+        videos: [],
+        meta: {
+            sourcesQueried,
+            totalFetched,
+            totalAfterDedup: deduplicatedArticles.length,
+            mode: isCrisisMode ? 'crisis' : 'monitor'
+        }
+    };
 }
 
-// Weather Integration
+// -------------------------------------------------------------
+// EXISTING WEATHER INTEGRATION
+// -------------------------------------------------------------
 export interface WeatherData {
     id: number;
     name: string;
@@ -225,48 +347,23 @@ export interface WeatherData {
 }
 
 const STRATEGIC_CITIES = [
-    "New York",
-    "London",
-    "Tokyo",
-    "Moscow",
-    "Beijing",
-    "Dubai",
-    "Berlin",
-    "Paris",
-    "Singapore",
-    "Sydney",
-    "Cairo",
-    "Buenos Aires",
-    "Istanbul",
-    "Mumbai",
-    "Seoul",
-    "Rio de Janeiro",
-    "Lagos",
+    "New York", "London", "Tokyo", "Moscow", "Beijing", "Dubai", "Berlin", "Paris",
+    "Singapore", "Sydney", "Cairo", "Buenos Aires", "Istanbul", "Mumbai", "Seoul",
+    "Rio de Janeiro", "Lagos"
 ];
 
-// Mock Weather Data
 const MOCK_WEATHER: WeatherData[] = [
     { id: 1, name: "New York", temp: 12, condition: "Cloudy", humidity: 60, windSpeed: 5.2, feelsLike: 10, description: "overcast clouds", pressure: 1012, country: "US", coordinates: { lat: 40.7, lon: -74.0 } },
     { id: 2, name: "London", temp: 8, condition: "Rain", humidity: 82, windSpeed: 6.5, feelsLike: 5, description: "light rain", pressure: 1008, country: "GB", coordinates: { lat: 51.5, lon: -0.1 } },
-    { id: 3, name: "Tokyo", temp: 18, condition: "Clear", humidity: 45, windSpeed: 3.1, feelsLike: 18, description: "clear sky", pressure: 1015, country: "JP", coordinates: { lat: 35.6, lon: 139.7 } },
-    { id: 4, name: "Moscow", temp: -2, condition: "Snow", humidity: 70, windSpeed: 4.0, feelsLike: -6, description: "light snow", pressure: 1020, country: "RU", coordinates: { lat: 55.7, lon: 37.6 } },
-    { id: 5, name: "Beijing", temp: 15, condition: "Haze", humidity: 55, windSpeed: 2.8, feelsLike: 14, description: "haze", pressure: 1010, country: "CN", coordinates: { lat: 39.9, lon: 116.4 } },
-    { id: 6, name: "Istanbul", temp: 14, condition: "Partly Cloudy", humidity: 62, windSpeed: 4.5, feelsLike: 13, description: "scattered clouds", pressure: 1016, country: "TR", coordinates: { lat: 41.0, lon: 28.9 } },
-    { id: 7, name: "Mumbai", temp: 28, condition: "Mist", humidity: 78, windSpeed: 3.5, feelsLike: 31, description: "mist", pressure: 1009, country: "IN", coordinates: { lat: 19.0, lon: 72.8 } },
-    { id: 8, name: "Seoul", temp: 5, condition: "Clear", humidity: 40, windSpeed: 2.1, feelsLike: 3, description: "clear sky", pressure: 1022, country: "KR", coordinates: { lat: 37.5, lon: 126.9 } },
-    { id: 9, name: "Rio de Janeiro", temp: 26, condition: "Sunny", humidity: 70, windSpeed: 5.5, feelsLike: 28, description: "clear sky", pressure: 1011, country: "BR", coordinates: { lat: -22.9, lon: -43.1 } },
-    { id: 10, name: "Lagos", temp: 30, condition: "Thunderstorm", humidity: 85, windSpeed: 6.0, feelsLike: 35, description: "thunderstorm", pressure: 1007, country: "NG", coordinates: { lat: 6.5, lon: 3.3 } }
 ];
 
 export async function fetchWeather(): Promise<WeatherData[]> {
     try {
         const apiKey = process.env.WEATHER_API_KEY;
         if (!apiKey) {
-            console.warn("Weather API Key missing. Using Mock Data.");
             return MOCK_WEATHER;
         }
 
-        // Shuffle and pick 10
         const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
         const selectedCities = shuffled.slice(0, 10);
 
@@ -278,12 +375,12 @@ export async function fetchWeather(): Promise<WeatherData[]> {
                 const data = await res.json();
                 
                 return {
-                    id: Math.floor(Math.random() * 100000), // Generate ID since WeatherAPI doesn't return stable numeric IDs
+                    id: Math.floor(Math.random() * 100000),
                     name: data.location.name,
                     temp: Math.round(data.current.temp_c),
                     condition: data.current.condition.text,
                     humidity: data.current.humidity,
-                    windSpeed: parseFloat((data.current.wind_kph / 3.6).toFixed(1)), // Convert kph to m/s
+                    windSpeed: parseFloat((data.current.wind_kph / 3.6).toFixed(1)),
                     feelsLike: Math.round(data.current.feelslike_c),
                     description: data.current.condition.text.toLowerCase(),
                     pressure: data.current.pressure_mb,
@@ -291,7 +388,6 @@ export async function fetchWeather(): Promise<WeatherData[]> {
                     coordinates: { lat: data.location.lat, lon: data.location.lon }
                 } as WeatherData;
             } catch (err) {
-                console.error(`Failed to fetch weather for ${city}`, err);
                 return null;
             }
         });
@@ -304,7 +400,6 @@ export async function fetchWeather(): Promise<WeatherData[]> {
         return validResults;
 
     } catch (error) {
-        console.error("Weather API Critical Error:", error);
         return MOCK_WEATHER;
     }
 }

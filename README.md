@@ -6,19 +6,19 @@ GeoPolitical Pulse is a Next.js-based situational awareness dashboard designed f
 
 - **Real-Time "Live Wire"**: A scrolling ticker component that mimics newsroom telemetry.
 - **Unified 3-Column Command Layout**:
-    - **Sector A (Left)**: Live Weather Intelligence Strip (Strategic Cities).
-    - **Sector B (Center)**: Main Headline Grid (Normalization of NewsAPI).
-    - **Sector C (Right)**: Ground News Feed Grid (GNews.io Integration).
+  - **Sector A (Left)**: Live Weather Intelligence Strip (Strategic Cities).
+  - **Sector B (Center)**: Main Headline Grid (Normalization of NewsAPI).
+  - **Sector C (Right)**: Ground News Feed Grid (GNews.io Integration).
 - **Advanced Weather Intelligence**:
-    - Real-time weather for strategic locations.
-    - Interactive "Atmo-Data" nodes with detailed pop-up modals (Pressure, Visibility, Feels Like).
-    - Visual indicators for conditions (Rain, Clear, Haze).
+  - Real-time weather for strategic locations.
+  - Interactive "Atmo-Data" nodes with detailed pop-up modals (Pressure, Visibility, Feels Like).
+  - Visual indicators for conditions (Rain, Clear, Haze).
 - **Robust Data Pipeline**:
-    - **Provider Rotation**: Automatic failover logic (NewsAPI -> GNews -> Mock Data) to handle rate limits.
-    - **Deterministic Mocking**: Stability-focused data generation for dev/demo modes.
+  - **Provider Rotation**: Automatic failover logic (NewsAPI -> GNews -> Mock Data) to handle rate limits.
+  - **Deterministic Mocking**: Stability-focused data generation for dev/demo modes.
 - **Premium Intelligence Features**:
-    - **AI Analysis Paywall**: Mock subscription gating for premium AI summaries of articles.
-    - **Full Content Extraction**: Server-side parsing of article content for read-mode.
+  - **AI Analysis Paywall**: Mock subscription gating for premium AI summaries of articles.
+  - **Full Content Extraction**: Server-side parsing of article content for read-mode.
 - **🚨 Crisis Mode**: Global override prioritizing high-impact events (War, Nuclear Alerts) and re-theming the UI to Red Alert status.
 
 ## 🛠 Tech Stack
@@ -35,36 +35,40 @@ GeoPolitical Pulse is a Next.js-based situational awareness dashboard designed f
 
 - Node.js 18+
 - API Keys for:
-    - [NewsAPI](https://newsapi.org)
-    - [GNews.io](https://gnews.io)
-    - [OpenWeatherMap](https://openweathermap.org/)
+  - [NewsAPI](https://newsapi.org)
+  - [GNews.io](https://gnews.io)
+  - [OpenWeatherMap](https://openweathermap.org/)
 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/geopolitical-pulse.git
    cd geopolitical-pulse
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Configure Environment:
    Create a `.env.local` file:
-   ```env
-   # News Providers
-   NEXT_PUBLIC_NEWS_API_KEY=your_news_key_here
-   G_NEWS_API=your_glines_key_here
-   
-   # Weather Data
-   WEATHER_API_KEY=your_weather_key_here
 
-   # Development Settings
-   NEXT_PUBLIC_USE_MOCK_DATA=false
+   ```env
+   # News API Providers (Required - At least one)
+   NEWS_API_KEY=your_key_here
+   GNEWS_API_KEY=your_key_here
+   PERIGON_API_KEY=your_key_here
+
+   # Weather Data (Optional)
+   WEATHER_API_KEY=your_key_here
    ```
+
+   > 🚨 **SECURITY WARNING**:
+   > NEVER commit your `.env.local` or any API keys to version control. The `.gitignore` has been strictly configured to block `.env` files, but you must remain vigilant. Always rotate leaked keys immediately.
 
 4. Run Development Server:
    ```bash

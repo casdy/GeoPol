@@ -1,4 +1,4 @@
-import { PulseItem } from './types';
+import { Article } from './types';
 
 // Configuration
 const CONFIG = {
@@ -13,13 +13,13 @@ const CONFIG = {
         }
     },
     // Mock Data Generator for absolute fallback
-    MOCK_FALLBACK: [] as PulseItem[]
+    MOCK_FALLBACK: [] as Article[]
 };
 
 /**
- * Standardizes the response from NewsAPI to our PulseItem format
+ * Standardizes the response from NewsAPI to our Article format
  */
-function normalizeNewsAPI(data: any): PulseItem[] {
+function normalizeNewsAPI(data: any): Article[] {
     if (!data.articles) return [];
     return data.articles.map((art: any, idx: number) => ({
         id: art.url || `newsapi-${idx}`,
@@ -36,9 +36,9 @@ function normalizeNewsAPI(data: any): PulseItem[] {
 }
 
 /**
- * Standardizes the response from GNews to our PulseItem format
+ * Standardizes the response from GNews to our Article format
  */
-function normalizeGNews(data: any): PulseItem[] {
+function normalizeGNews(data: any): Article[] {
     if (!data.articles) return [];
     return data.articles.map((art: any, idx: number) => ({
         id: art.url || `gnews-${idx}`,
@@ -56,7 +56,7 @@ function normalizeGNews(data: any): PulseItem[] {
 
 // --- Provider Implementations ---
 
-async function fetchFromNewsAPI(query: string): Promise<PulseItem[]> {
+async function fetchFromNewsAPI(query: string): Promise<Article[]> {
     const apiKey = CONFIG.PROVIDERS.NEWS_API.KEY;
     if (!apiKey) throw new Error("NewsAPI Key missing");
 
@@ -77,7 +77,7 @@ async function fetchFromNewsAPI(query: string): Promise<PulseItem[]> {
     return normalizeNewsAPI(data);
 }
 
-async function fetchFromGNews(query: string): Promise<PulseItem[]> {
+async function fetchFromGNews(query: string): Promise<Article[]> {
     const apiKey = CONFIG.PROVIDERS.GNEWS.KEY;
     if (!apiKey) throw new Error("GNews Key missing");
 
@@ -104,7 +104,7 @@ async function fetchFromGNews(query: string): Promise<PulseItem[]> {
  * Smart Rotation Fetcher
  * Attempts to fetch from Primary Provider. If quota exceeded (429/402), rotates to Secondary Provider.
  */
-export async function fetchNewsWithRotation(query: string): Promise<PulseItem[]> {
+export async function fetchNewsWithRotation(query: string): Promise<Article[]> {
     console.log(`[NewsService] Fetching news for query: "${query}"...`);
 
     try {

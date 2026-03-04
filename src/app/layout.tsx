@@ -1,9 +1,15 @@
-'use client';
-
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { Providers } from "./providers";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "GeoPol | Geopolitical Terminal",
+  description: "Live geopolitical intelligence feed and dashboard",
+  icons: {
+    icon: "/logo-geopol.png",
+  },
+};
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,14 +18,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <QueryClientProvider client={queryClient}>
+        <Providers>
           {children}
-        </QueryClientProvider>
+        </Providers>
       </body>
     </html>
   );

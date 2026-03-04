@@ -30,13 +30,16 @@ export default function WeatherModal({ data, onClose }: WeatherModalProps) {
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
                     onClick={onClose}
+                    style={{ willChange: 'opacity' }}
                 >
                     <motion.div
-                        initial={{ scale: 0.9, y: 20, opacity: 0 }}
-                        animate={{ scale: 1, y: 0, opacity: 1 }}
-                        exit={{ scale: 0.95, y: 10, opacity: 0 }}
+                        initial={{ scale: 0.96, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.96, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
                         onClick={(e) => e.stopPropagation()}
                         className="bg-neutral-900 border border-neutral-700 w-full max-w-md rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden relative"
+                        style={{ willChange: 'transform, opacity', backfaceVisibility: 'hidden' }}
                     >
                         {/* Header Image / Map Placeholder */}
                         <div className="h-32 bg-neutral-950 relative overflow-hidden">

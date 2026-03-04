@@ -1,16 +1,34 @@
 export type Region = 'Global' | 'Middle East' | 'Eastern Europe' | 'Asia Pacific' | 'Americas' | 'Africa' | 'Arctic' | 'South Asia' | 'Central Asia' | 'Latin America';
 
-export interface PulseItem {
+export interface BiasMeta {
+  sourceReliability: "high" | "medium" | "unknown";
+  ownershipType: "state" | "private" | "publicly_traded" | "unknown";
+  countryOfOrigin: string;
+  geopoliticalAlignment: "western" | "non_western" | "mixed" | "unknown";
+  sensationalismScore: number;
+  emotionallyLoadedLanguage: boolean;
+}
+
+export interface Article {
   id: string;
   title: string;
-  source: string;
-  publishedAt: string; // ISO String
+  description: string;
   url: string;
-  imageUrl?: string;
-  type: 'article' | 'video';
-  tags: string[];
-  description?: string;
-  content?: string;
+  source: string;
+  domain: string;
+  publishedAt: string; // ISO String
+  image?: string;
+  biasMeta: BiasMeta;
+  tags?: string[];
+}
+
+export interface Video {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  thumbnail?: string;
 }
 
 export interface FetchOptions {
@@ -18,4 +36,5 @@ export interface FetchOptions {
   region?: Region;
   isCrisisMode?: boolean;
   page?: number;
+  category?: string;
 }

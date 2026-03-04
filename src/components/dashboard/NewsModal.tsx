@@ -4,10 +4,10 @@ import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Globe, Calendar, ArrowRight, Bot, Sparkles, Loader2, FileText } from 'lucide-react';
 import { summarizeArticle, fetchArticleContent } from '@/app/actions';
-import { PulseItem } from '@/lib/types';
+import { Article } from '@/lib/types';
 
 interface NewsModalProps {
-    article: PulseItem | null;
+    article: Article | null;
     onClose: () => void;
 }
 
@@ -121,10 +121,10 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
 
                         {/* Hero Image Section */}
                         <div className="relative h-64 w-full bg-neutral-950 shrink-0">
-                            {article.imageUrl ? (
+                            {article.image ? (
                                 <>
                                     <img
-                                        src={article.imageUrl}
+                                        src={article.image}
                                         alt={article.title}
                                         className="w-full h-full object-cover opacity-80 grayscale overflow-hidden"
                                     />
@@ -150,7 +150,7 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
 
                             {/* Tags */}
                             <div className="flex flex-wrap gap-2 mb-4">
-                                {article.tags.map(tag => (
+                                {article.tags?.map(tag => (
                                     <span key={tag} className="text-[9px] text-neutral-400 bg-neutral-800 px-2 py-[2px] border border-neutral-700 uppercase tracking-widest">
                                         {tag}
                                     </span>

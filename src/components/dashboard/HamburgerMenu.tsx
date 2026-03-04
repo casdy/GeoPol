@@ -49,7 +49,7 @@ export default function HamburgerMenu({ categories, selectedCategory, onSelectCa
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-sm transition-colors border border-transparent hover:border-neutral-700"
+                className="w-11 h-11 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-sm transition-colors border border-transparent hover:border-neutral-700"
                 aria-label="Open Menu"
             >
                 <Menu className="w-6 h-6" />
@@ -82,7 +82,7 @@ export default function HamburgerMenu({ categories, selectedCategory, onSelectCa
                                 </h2>
                                 <button
                                     onClick={() => setIsOpen(false)}
-                                    className="p-1 hover:bg-neutral-800 rounded-sm text-neutral-400 hover:text-white transition-colors"
+                                    className="w-11 h-11 flex items-center justify-center hover:bg-neutral-800 rounded-sm text-neutral-400 hover:text-white transition-colors"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
