@@ -16,9 +16,9 @@ GeoPolitical Pulse is a Next.js-based situational awareness dashboard designed f
 - **Robust Data Pipeline**:
   - **Provider Rotation**: Automatic failover logic (NewsAPI -> GNews -> Mock Data) to handle rate limits.
   - **Deterministic Mocking**: Stability-focused data generation for dev/demo modes.
-- **Premium Intelligence Features**:
-  - **AI Analysis Paywall**: Mock subscription gating for premium AI summaries of articles.
-  - **Full Content Extraction**: Server-side parsing of article content for read-mode.
+- **Copyright Safe Harbor Aggregation**:
+  - **AI Synthesized Briefings**: Transformative AI abstracts acting strictly within Fair Use protocols.
+  - **Direct Publisher Referencing**: Links to full stories explicitly route out to the original publications.
 - **🚨 Crisis Mode**: Global override prioritizing high-impact events (War, Nuclear Alerts) and re-theming the UI to Red Alert status.
 
 ## 🛠 Tech Stack
@@ -87,4 +87,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 - **Search Engine**: Refined logic to prioritize direct user queries, bypassing default filters for unrestricted keyword searching.
 - **Weather Expansion**: Increased tracking to 10 strategic global cities with extended mock data coverage.
 - **Reliability**: Added robust fallback data generation for Ground News feed to prevent empty states.
+- **Security & Compliance**: Removed all full-text article scraping functions to mathematically guarantee DMCA / Copyright compliance. Enforced strict cross-origin tab-nabbing protections (`rel="noopener noreferrer"`).
+- **Advanced WAF**: Integrated Edge-native API Rate Limiting (DE.CM-06) natively intercepting all deep routes to mitigate Denial of Wallet attacks.
+- **Data Density**: Expanded the unified intelligence payload capacity to process and layout 60 concurrent live-feed articles across adaptive desktop/mobile grids.
 - **Micro-Interactions**: Enhanced hover states, card animations, and modal transitions.
