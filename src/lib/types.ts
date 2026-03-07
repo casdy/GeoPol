@@ -1,4 +1,25 @@
-export type Region = 'Global' | 'Middle East' | 'Eastern Europe' | 'Asia Pacific' | 'Americas' | 'Africa' | 'Arctic' | 'South Asia' | 'Central Asia' | 'Latin America';
+export type Region =
+  | "Global"
+  | "Middle East"
+  | "Eastern Europe"
+  | "Asia Pacific"
+  | "Americas"
+  | "Africa"
+  | "Arctic"
+  | "South Asia"
+  | "Central Asia"
+  | "Latin America";
+
+export interface PulseItem {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  summary: string;
+  imageUrl: string;
+  sentiment?: number;
+}
 
 export interface BiasMeta {
   sourceReliability: "high" | "medium" | "unknown";
@@ -13,6 +34,7 @@ export interface Article {
   id: string;
   title: string;
   description: string;
+  summary?: string;
   url: string;
   source: string;
   domain: string;
@@ -20,6 +42,7 @@ export interface Article {
   image?: string;
   biasMeta: BiasMeta;
   tags?: string[];
+  apiSource?: string;
 }
 
 export interface Video {

@@ -1,5 +1,5 @@
 import { Article } from '@/lib/types';
-import { ExternalLink, PlayCircle, Clock } from 'lucide-react';
+import { ExternalLink, PlayCircle, Clock, Share2 } from 'lucide-react';
 
 interface ItemCardProps {
     item: Article;
@@ -33,10 +33,10 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
     };
     
     const titleSizes = {
-        default: 'text-sm mb-3',
-        hero: 'text-2xl md:text-3xl mb-4',
-        compact: 'text-xs mb-2 leading-tight',
-        'text-only': 'text-sm mb-2 font-bold hover:underline underline-offset-4'
+        default: 'text-lg md:text-sm mb-3', // 18px on mobile
+        hero: 'text-3xl md:text-3xl lg:text-4xl mb-4 leading-tight', // 30px on mobile
+        compact: 'text-base md:text-xs mb-2 leading-tight', // 16px on mobile
+        'text-only': 'text-lg md:text-sm mb-2 font-bold hover:underline underline-offset-4' // 18px on mobile
     };
 
     const isTextOnly = variant === 'text-only';
@@ -45,9 +45,9 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
         <a
             href={item.url}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             onClick={handleClick}
-            className={`group relative ${!isTextOnly ? 'bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/50 hover:-translate-y-0.5' : 'bg-transparent border-b border-neutral-800/50 pb-3 hover:bg-neutral-900/20'} overflow-hidden transition-all duration-300 flex flex-col h-full cursor-pointer hover:shadow-[0_0_30px_rgba(234,88,12,0.1)]`}
+            className={`group relative ${!isTextOnly ? 'bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/50 hover:-translate-y-0.5 rounded-md' : 'bg-transparent border-b border-neutral-800/50 pb-3 hover:bg-neutral-900/20'} overflow-hidden transition-all duration-300 flex flex-col h-full cursor-pointer hover:shadow-[0_0_30px_rgba(234,88,12,0.1)]`}
         >
             {/* Tech Decoration Lines */}
             {!isTextOnly && (
@@ -90,18 +90,38 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
 
             {/* Content Body */}
             <div className={`${!isTextOnly ? 'p-4 bg-neutral-900' : 'pt-2 px-2'} flex flex-col flex-grow `}>
-                <div className="flex gap-2 mb-2 flex-wrap">
-                    {item.tags?.slice(0, 3).map((tag, i) => (
-                        <span key={tag} className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 ${!isTextOnly ? 'border' : ''} ${i === 0 ? 'text-orange-400 border-orange-500/30 font-bold' : 'text-neutral-500 border-neutral-700'}`}>
-                            {tag}
+                <div className="flex flex-col gap-1 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400">
+                            {item.source}
                         </span>
-                    ))}
+                        {item.tags?.slice(0, 3).map((tag, i) => (
+                            <span key={tag} className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 ${!isTextOnly ? 'border' : ''} ${i === 0 ? 'text-orange-400 border-orange-500/30 font-bold' : 'text-neutral-500 border-neutral-700'}`}>
+                                {tag}
+                            </span>
+                        ))}
+                        {item.apiSource && !isTextOnly && (
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 border text-blue-400 border-blue-500/30 font-bold ml-auto" title="Provider API">
+                                {item.apiSource}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {!hideTitle && (
-                    <h3 className={`text-neutral-200 font-bold flex-grow line-clamp-3 group-hover:text-amber-500 transition-colors font-mono ${titleSizes[variant as keyof typeof titleSizes]}`}>
-                        {item.title}
-                    </h3>
+                    <div className="flex flex-col flex-grow">
+                        <h3 className={`text-neutral-200 font-bold group-hover:text-amber-500 transition-colors font-mono ${titleSizes[variant as keyof typeof titleSizes]}`}>
+                            {item.title}
+                        </h3>
+                        {!isTextOnly && item.description && (
+                            <div className="mt-1 mb-4 border-l-2 border-orange-500/30 pl-3">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-orange-500/80 mb-1 block">Intelligence Briefing</span>
+                                <p className="text-xs text-neutral-400 font-sans line-clamp-2 leading-relaxed">
+                                    {item.description}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 <div className={`flex items-center justify-between text-[10px] text-neutral-600 font-mono mt-auto ${!isTextOnly ? 'pt-3 border-t border-neutral-800' : 'pt-2'}`}>
@@ -110,8 +130,33 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
                         <span>{formatDate(item.publishedAt)}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-orange-500 uppercase tracking-widest font-bold">
-                        {isVideo ? 'Play' : 'Read'} {isVideo ? <PlayCircle className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+                    <div className="flex items-center gap-3">
+                        {/* Share Button */}
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const shareData = {
+                                    title: item.title,
+                                    text: `Read this GeoPolitical Pulse briefing:\n${item.title}`,
+                                    url: item.url
+                                };
+                                if (navigator.share) {
+                                    navigator.share(shareData).catch(console.error);
+                                } else {
+                                    navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                                    alert("Link copied to clipboard!");
+                                }
+                            }}
+                            className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-white uppercase tracking-widest font-bold z-10 relative"
+                            title="Share Article"
+                        >
+                            <Share2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-orange-500 uppercase tracking-widest font-bold">
+                            {isVideo ? 'Play' : 'Read'} {isVideo ? <PlayCircle className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+                        </div>
                     </div>
                 </div>
             </div>

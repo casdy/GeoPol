@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Globe, Calendar, ArrowRight, Bot, Sparkles, Loader2, FileText } from 'lucide-react';
-import { summarizeArticle, fetchArticleContent } from '@/app/actions';
+import { X, Globe, Calendar, ExternalLink, Bot, Sparkles, Loader2, FileText, Share2, Check } from 'lucide-react';
+import { summarizeArticle } from '@/app/actions';
 import { Article } from '@/lib/types';
 
 interface NewsModalProps {
@@ -12,11 +12,11 @@ interface NewsModalProps {
 }
 
 import PaywallModal from './PaywallModal';
+import PodcastPlayer from '@/components/shared/PodcastPlayer';
+import NewsletterForm from '@/components/shared/NewsletterForm';
 
 export default function NewsModal({ article, onClose }: NewsModalProps) {
     const [summary, setSummary] = useState<string | null>(null);
-    const [fullContent, setFullContent] = useState<string | null>(null);
-    const [isLoadingContent, setIsLoadingContent] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -24,25 +24,43 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
     const [isPaywallOpen, setIsPaywallOpen] = useState(false);
     const [hasAccess, setHasAccess] = useState(false);
 
+    // Share State
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleShare = async () => {
+        if (!article) return;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: article.title,
+                    text: article.description || article.title,
+                    url: article.url,
+                });
+            } catch (_) {
+                // User cancelled or share failed — fall through to clipboard
+            }
+        } else {
+            // Fallback: copy URL to clipboard
+            try {
+                await navigator.clipboard.writeText(article.url);
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2500);
+            } catch (_) {
+                // Clipboard not available
+            }
+        }
+    };
+
     useEffect(() => {
         const loadContent = async () => {
             if (article) {
                 document.body.style.overflow = 'hidden';
                 setSummary(null);
-                setFullContent(null);
                 setError(null);
                 // Reset Paywall Access on new article? 
                 // For demo purposes, maybe we keep access if paid once, or reset.
                 // Let's reset to force the demo experience every time or per session?
                 // setHasAccess(false); 
-
-                // Content Fetch
-                setIsLoadingContent(true);
-                const res = await fetchArticleContent(article.url);
-                if (res.content) {
-                    setFullContent(res.content);
-                }
-                setIsLoadingContent(false);
             } else {
                 document.body.style.overflow = 'auto';
             }
@@ -94,7 +112,7 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+                    className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/90 backdrop-blur-md md:p-4 p-0"
                 >
                     <PaywallModal
                         isOpen={isPaywallOpen}
@@ -104,23 +122,26 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
 
                     {/* Modal Container */}
                     <motion.div
-                        initial={{ scale: 0.9, y: 20, opacity: 0 }}
-                        animate={{ scale: 1, y: 0, opacity: 1 }}
-                        exit={{ scale: 0.95, y: 10, opacity: 0 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="bg-neutral-900 border border-neutral-700 w-full max-w-3xl rounded-sm shadow-2xl flex flex-col overflow-hidden relative max-h-[90vh]"
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                        className="bg-neutral-900 border-t md:border border-neutral-700 w-full max-w-4xl md:rounded-sm shadow-2xl flex flex-col overflow-hidden relative h-[100dvh] md:h-auto md:max-h-[90vh] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
                     >
+
+                        {/* Top Handle for Mobile Drag Hint */}
+                        <div className="md:hidden w-12 h-1.5 bg-neutral-700 rounded-full mx-auto my-3 shrink-0" />
 
                         {/* Close Button (Absolute) */}
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-orange-600/90 text-white p-2 rounded-sm backdrop-blur-sm transition-all border border-white/10 hover:border-orange-500/50"
+                            className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-orange-600/90 text-white p-2.5 rounded-full md:rounded-sm backdrop-blur-sm transition-all border border-white/10 hover:border-orange-500/50 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
                         {/* Hero Image Section */}
-                        <div className="relative h-64 w-full bg-neutral-950 shrink-0">
+                        <div className="relative h-40 md:h-64 w-full bg-neutral-950 shrink-0">
                             {article.image ? (
                                 <>
                                     <img
@@ -146,56 +167,43 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                         </div>
 
                         {/* Content Body */}
-                        <div className="p-6 md:p-8 flex flex-col flex-1 overflow-y-auto bg-neutral-900 custom-scrollbar">
+                        <div className="p-4 md:p-8 flex flex-col flex-1 overflow-y-auto min-h-0 bg-neutral-900 custom-scrollbar">
 
-                            {/* Tags */}
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {article.tags?.map(tag => (
-                                    <span key={tag} className="text-[9px] text-neutral-400 bg-neutral-800 px-2 py-[2px] border border-neutral-700 uppercase tracking-widest">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-
-                            {/* Title */}
-                            <h2 className="text-xl md:text-2xl font-black text-white leading-none mb-6 font-mono uppercase tracking-tight">
-                                {article.title}
-                            </h2>
-
-                            {/* Metadata */}
-                            <div className="flex items-center gap-4 text-neutral-500 text-[10px] uppercase tracking-widest mb-8 border-b border-neutral-800 pb-4 font-mono">
-                                <div className="flex items-center gap-1.5">
-                                    <Calendar className="w-3 h-3 text-neutral-600" />
-                                    <span>{new Date(article.publishedAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            {/* Prominent Attribution Banner & Tags */}
+                            <div className="mb-4">
+                                <div className="flex items-center justify-between mb-3 border-b border-neutral-800 pb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-blue-400 font-semibold tracking-wide uppercase text-sm md:text-base">
+                                            {article.source}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-neutral-500 text-[10px] uppercase tracking-widest font-mono">
+                                        <Calendar className="w-3 h-3 text-neutral-600" />
+                                        <span>{new Date(article.publishedAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                    {article.tags?.map(tag => (
+                                        <span key={tag} className="text-[10px] md:text-[9px] text-neutral-400 bg-neutral-800 px-3 py-1 md:px-2 md:py-[2px] border border-neutral-700 uppercase tracking-widest rounded-sm">
+                                            {tag}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
 
-                            {/* Article Body Content */}
+                            {/* Title */}
+                            <h2 className="text-2xl md:text-2xl font-black text-white leading-tight mb-6 md:mb-8 font-mono uppercase tracking-tight">
+                                {article.title}
+                            </h2>
+
+                            {/* The Intelligence Brief (Snippet) */}
                             <div className="mb-8 space-y-4">
+                                <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-2 border-b border-neutral-800 pb-2">Intelligence Brief</h3>
                                 <div className="prose prose-invert prose-sm max-w-none">
-                                    {fullContent ? (
-                                        <motion.div
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            className="whitespace-pre-wrap leading-relaxed text-neutral-300 font-serif text-base tracking-wide"
-                                        >
-                                            {fullContent}
-                                        </motion.div>
-                                    ) : isLoadingContent ? (
-                                        <div className="flex flex-col items-center justify-center py-10 space-y-4 text-neutral-500 animate-pulse">
-                                            <div className="w-full h-4 bg-neutral-800 rounded"></div>
-                                            <div className="w-3/4 h-4 bg-neutral-800 rounded"></div>
-                                            <div className="w-5/6 h-4 bg-neutral-800 rounded"></div>
-                                            <div className="flex items-center gap-2 text-xs font-mono mt-4">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                DECRYPTING SIGNAL...
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-neutral-400 italic border-l-2 border-neutral-700 pl-4">
-                                            {article.description || "No preview available."}
-                                        </div>
-                                    )}
+                                    <div className="whitespace-pre-wrap leading-relaxed text-neutral-300 font-serif text-base tracking-wide border-l-2 border-blue-500/50 pl-4">
+                                        {article.summary || article.description || "No intelligence brief available. Please view the full report at the source."}
+                                    </div>
                                 </div>
                             </div>
 
@@ -209,7 +217,7 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                                     {!summary && !isSummarizing && (
                                         <button
                                             onClick={handleSummarizeRequest}
-                                            className="flex items-center gap-1.5 text-[10px] font-bold bg-orange-900/10 hover:bg-orange-600 hover:text-black text-orange-500 border border-orange-500/50 px-3 py-1 transition-all uppercase tracking-widest"
+                                            className="flex items-center gap-2 text-xs font-bold bg-orange-900/10 hover:bg-orange-600 hover:text-black text-orange-500 border border-orange-500/50 px-4 py-2.5 transition-all uppercase tracking-widest min-h-[44px]"
                                         >
                                             <Sparkles className="w-3 h-3" />
                                             {hasAccess ? 'Generate Summary' : 'Unlock Analysis'}
@@ -239,31 +247,58 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                                 )}
                             </div>
 
-                            {/* Action Area */}
-                            <div className="mt-auto space-y-4">
-                                <div className="p-3 bg-neutral-950 rounded-sm border-l-2 border-orange-500 text-xs text-neutral-500 font-mono flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-orange-600" />
-                                    <p>
-                                // FULL REPORT FETCHED FROM {article.source.toUpperCase()}
-                                    </p>
-                                </div>
+                            {/* Deep Dive Podcast Player */}
+                            <div className="mb-8">
+                                <PodcastPlayer type="deep-dive" data={{ article, fullText: article.summary || article.description }} />
+                                <p className="text-[10px] text-neutral-500 mt-3 italic font-mono text-center">
+                                    "AI analysis is based on the publisher's provided summary."
+                                </p>
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                            {/* Newsletter Subscription */}
+                            <div className="mb-8 border-t border-neutral-800 pt-8">
+                                <NewsletterForm />
+                            </div>
+
+                            {/* Action Area */}
+                            <div className="mt-auto space-y-4 border-t border-neutral-800 pt-6">
+                                {/* Primary CTA to Original Source */}
+                                <a
+                                    href={article.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group w-full py-4 px-6 rounded-md font-bold text-sm md:text-base uppercase tracking-widest bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-between transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] min-h-[56px]"
+                                >
+                                    <span>Read Full Report on {article.source}</span>
+                                    <ExternalLink className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                </a>
+
+                                <div className="grid grid-cols-2 gap-3">
                                     <button
                                         onClick={onClose}
-                                        className="w-full py-3 rounded-sm font-bold text-xs uppercase tracking-widest text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors border border-neutral-800"
+                                        className="w-full py-3 rounded-sm font-bold text-xs uppercase tracking-widest text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors border border-neutral-800 min-h-[44px]"
                                     >
-                                        Cancel
+                                        Close
                                     </button>
 
-                                    <a
-                                        href={article.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="group w-full py-3 rounded-sm font-bold text-xs uppercase tracking-widest bg-orange-600 hover:bg-orange-500 text-black flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(234,88,12,0.3)] hover:shadow-[0_0_30px_rgba(234,88,12,0.5)]"
+                                    {/* Share Button */}
+                                    <button
+                                        onClick={handleShare}
+                                        className="group w-full py-3 rounded-sm font-bold text-xs uppercase tracking-widest border border-neutral-700 text-neutral-300 hover:bg-neutral-800 flex items-center justify-center gap-2 transition-all min-h-[44px]"
+                                        title={isCopied ? 'Link copied!' : 'Share article'}
                                     >
-                                        Access Source <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    </a>
+                                        {isCopied ? (
+                                            <>
+                                                <Check className="w-4 h-4 text-emerald-400" />
+                                                <span className="text-emerald-400">Copied!</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Share2 className="w-4 h-4" />
+                                                Share
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
 

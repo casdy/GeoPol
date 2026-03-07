@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             // Basic CSP: Allow self, allow scripts/styles from self and strict inline (unsafe-inline used for simplicity in this demo due to Tailwind/Next dynamic styles, usually strict-dynamic is better but complex to setup)
             // We also allow images from placehold.co and youtube as used in the app.
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self'; connect-src 'self' https://newsapi.org https://www.googleapis.com;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https: http:; media-src 'self' data:; font-src 'self'; connect-src 'self' https://newsapi.org https://www.googleapis.com https://api.resend.com;"
           }
         ]
       }

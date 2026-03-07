@@ -1,6 +1,6 @@
 'use server';
 
-import { Article, Video, BiasMeta, FetchOptions } from './types';
+import { Article, Video, BiasMeta, FetchOptions, PulseItem } from './types';
 
 const TIER_1_DOMAINS = [
     "reuters.com",
@@ -35,7 +35,7 @@ const SOURCE_INTELLIGENCE_PROFILE: Record<string, Partial<BiasMeta>> = {
 const SENSATIONAL_WORDS = ["shocking", "explosive", "devastating", "historic", "massive", "catastrophic", "dramatic", "unbelievable"];
 const NOISE_CATEGORIES = ["sports", "entertainment", "celebrity", "gossip", "lifestyle", "fashion", "movie", "tv", "music"];
 
-export interface AggregationResult {
+interface AggregationResult {
     news: Article[];
     videos: Video[];
     meta: {
@@ -49,8 +49,8 @@ export interface AggregationResult {
 // -------------------------------------------------------------
 // UTILITIES
 // -------------------------------------------------------------
-function isRelevantGeopoliticalArticle(article: Partial<Article>): boolean {
-    const text = ((article.title || '') + ' ' + (article.description || '')).toLowerCase();
+function isRelevantGeopoliticalArticle(title: string, summary: string): boolean {
+    const text = ((title || '') + ' ' + (summary || '')).toLowerCase();
 
     for (const noise of NOISE_CATEGORIES) {
         const regex = new RegExp(`\\b${noise}\\b`, 'i');
@@ -79,43 +79,6 @@ function calculateSimilarity(str1: string, str2: string): number {
     const union = new Set([...clean1, ...clean2]);
 
     return intersection.size / union.size;
-}
-
-function deduplicateAndCluster(articles: Article[]): Article[] {
-    const unique: Article[] = [];
-
-    for (const article of articles) {
-        let isDuplicate = false;
-
-        for (let i = 0; i < unique.length; i++) {
-            const existing = unique[i];
-            const similarity = calculateSimilarity(article.title, existing.title);
-
-            if (similarity >= 0.75) {
-                isDuplicate = true;
-
-                const articleTier1 = TIER_1_DOMAINS.includes(article.domain);
-                const existingTier1 = TIER_1_DOMAINS.includes(existing.domain);
-
-                if (articleTier1 && !existingTier1) {
-                    unique[i] = article; // Replace with higher tier
-                } else if (articleTier1 === existingTier1) {
-                    const articleDate = new Date(article.publishedAt).getTime();
-                    const existingDate = new Date(existing.publishedAt).getTime();
-                    if (articleDate < existingDate) {
-                        unique[i] = article; // Earliest publish date
-                    }
-                }
-                break;
-            }
-        }
-
-        if (!isDuplicate) {
-            unique.push(article);
-        }
-    }
-
-    return unique;
 }
 
 function enrichWithBiasMetadata(article: Omit<Article, 'biasMeta'>): Article {
@@ -154,10 +117,6 @@ function enrichWithBiasMetadata(article: Omit<Article, 'biasMeta'>): Article {
     } as Article;
 }
 
-// -------------------------------------------------------------
-// PROVIDERS
-// -------------------------------------------------------------
-
 function extractDomain(url: string): string {
     try {
         const hostname = new URL(url).hostname;
@@ -167,141 +126,201 @@ function extractDomain(url: string): string {
     }
 }
 
-async function fetchNewsAPI(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
-    const key = process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY;
-    if (!key) throw new Error("Missing NEWS_API_KEY");
+// -------------------------------------------------------------
+// PROVIDERS (QUAD-CORE)
+// -------------------------------------------------------------
 
-    const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=30`, {
-        headers: { 'X-Api-Key': key },
-        next: { revalidate: isCrisisMode ? 30 : 60 }
-    });
-
-    if (!res.ok) throw new Error(`NewsAPI Error: ${res.statusText}`);
-    const data = await res.json();
-
-    return (data.articles || []).map((art: any, i: number) => ({
-        id: `newsapi-${i}-${Date.now()}`,
-        title: art.title || '',
-        description: art.description || '',
-        url: art.url || '',
-        source: art.source?.name || 'Unknown',
-        domain: extractDomain(art.url),
-        publishedAt: art.publishedAt || new Date().toISOString(),
-        image: art.urlToImage,
-        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
-    }));
-}
-
-async function fetchGNews(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
+async function fetchGNews(keyword: string, isCrisisMode: boolean): Promise<PulseItem[]> {
     const key = process.env.GNEWS_API_KEY || process.env.G_NEWS_API;
-    if (!key) throw new Error("Missing GNEWS_API_KEY");
+    if (!key) return [];
 
-    const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=30&apikey=${key}`, {
-        next: { revalidate: isCrisisMode ? 30 : 60 }
-    });
-
-    if (!res.ok) throw new Error(`GNews Error: ${res.statusText}`);
-    const data = await res.json();
-
-    return (data.articles || []).map((art: any, i: number) => ({
-        id: `gnews-${i}-${Date.now()}`,
-        title: art.title || '',
-        description: art.description || '',
-        url: art.url || '',
-        source: art.source?.name || 'Unknown',
-        domain: extractDomain(art.url),
-        publishedAt: art.publishedAt || new Date().toISOString(),
-        image: art.image,
-        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
-    }));
+    try {
+        const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(keyword)}&lang=en&max=20&apikey=${key}`, {
+            next: { revalidate: isCrisisMode ? 30 : 3600 }
+        });
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("GNews API Response:", errorText);
+            throw new Error(`GNews Error: ${res.statusText}`);
+        }
+        const data = await res.json();
+        return (data.articles || []).map((art: any, i: number) => ({
+            id: `gnews-${i}-${Date.now()}`,
+            title: art.title || '',
+            url: art.url || '',
+            source: art.source?.name || 'GNews',
+            publishedAt: art.publishedAt || new Date().toISOString(),
+            summary: art.description || '',
+            imageUrl: art.image || '/images/default-radar-placeholder.jpg',
+        }));
+    } catch (e) {
+        console.warn("fetchGNews failed:", e);
+        return [];
+    }
 }
 
-async function fetchPerigon(query: string, isCrisisMode: boolean, category: string, region: string): Promise<Omit<Article, 'biasMeta'>[]> {
-    const key = process.env.PERIGON_API_KEY || process.env.PERIGON_KEY;
-    if (!key) throw new Error("Missing PERIGON_API_KEY");
+async function fetchNewsApi(keyword: string, isCrisisMode: boolean): Promise<PulseItem[]> {
+    const key = process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY;
+    if (!key) return [];
 
-    const res = await fetch(`https://api.perigon.io/v1/articles?q=${encodeURIComponent(query)}&apiKey=${key}&size=20`, {
-        next: { revalidate: isCrisisMode ? 30 : 60 }
-    });
+    try {
+        const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(keyword)}&language=en&sortBy=publishedAt&pageSize=20`, {
+            headers: { 'X-Api-Key': key },
+            next: { revalidate: isCrisisMode ? 30 : 3600 }
+        });
+        if (!res.ok) throw new Error(`NewsAPI Error: ${res.statusText}`);
+        const data = await res.json();
+        return (data.articles || []).map((art: any, i: number) => ({
+            id: `newsapi-${i}-${Date.now()}`,
+            title: art.title || '',
+            url: art.url || '',
+            source: art.source?.name || 'NewsAPI',
+            publishedAt: art.publishedAt || new Date().toISOString(),
+            summary: art.description || '',
+            imageUrl: art.urlToImage || '/images/default-radar-placeholder.jpg',
+        }));
+    } catch (e) {
+        console.warn("fetchNewsApi failed:", e);
+        return [];
+    }
+}
 
-    if (!res.ok) throw new Error(`Perigon Error: ${res.statusText}`);
-    const data = await res.json();
+async function fetchWorldNews(keyword: string, isCrisisMode: boolean): Promise<PulseItem[]> {
+    const key = process.env.WORLD_NEWS_API_KEY;
+    if (!key) return [];
 
-    return (data.articles || []).map((art: any, i: number) => ({
-        id: `perigon-${art.id || i}-${Date.now()}`,
-        title: art.title || '',
-        description: art.summary || art.description || '',
-        url: art.url || '',
-        source: art.source?.domain || 'Unknown',
-        domain: extractDomain(art.url),
-        publishedAt: art.pubDate || new Date().toISOString(),
-        image: art.imageUrl,
-        tags: ['NEWS', category && category !== 'general' ? category.toUpperCase() : region.toUpperCase()]
-    }));
+    try {
+        const res = await fetch(`https://api.worldnewsapi.com/search-news?text=${encodeURIComponent(keyword)}&language=en&number=20`, {
+            headers: { 'x-api-key': key },
+            next: { revalidate: isCrisisMode ? 30 : 3600 }
+        });
+        if (!res.ok) throw new Error(`World News API Error: ${res.statusText}`);
+        const data = await res.json();
+        return (data.news || []).map((art: any) => ({
+            id: art.id?.toString() || `worldnews-${Date.now()}-${Math.random()}`,
+            title: art.title || '',
+            url: art.url || '',
+            source: art.authors?.[0] || 'World News API',
+            publishedAt: art.publish_date || new Date().toISOString(),
+            summary: art.text || '',
+            imageUrl: art.image || '/images/default-radar-placeholder.jpg',
+            sentiment: art.sentiment
+        }));
+    } catch (e) {
+        console.warn("fetchWorldNews failed:", e);
+        return [];
+    }
+}
+
+async function fetchTheNewsApi(keyword: string, isCrisisMode: boolean): Promise<PulseItem[]> {
+    const key = process.env.THENEWSAPI_KEY;
+    if (!key) return [];
+
+    try {
+        const res = await fetch(`https://api.thenewsapi.com/v1/news/all?api_token=${key}&search=${encodeURIComponent(keyword)}&language=en&limit=20`, {
+            next: { revalidate: isCrisisMode ? 30 : 3600 }
+        });
+        if (!res.ok) throw new Error(`The News API Error: ${res.statusText}`);
+        const data = await res.json();
+        return (data.data || []).map((art: any) => ({
+            id: art.uuid || `thenewsapi-${Date.now()}-${Math.random()}`,
+            title: art.title || '',
+            url: art.url || '',
+            source: art.source || 'The News API',
+            publishedAt: art.published_at || new Date().toISOString(),
+            summary: art.description || art.snippet || '',
+            imageUrl: art.image_url || '/images/default-radar-placeholder.jpg',
+        }));
+    } catch (e) {
+        console.warn("fetchTheNewsApi failed:", e);
+        return [];
+    }
 }
 
 // -------------------------------------------------------------
-// MAIN AGGREGATION ENGINE
+// MAIN AGGREGATION ENGINE (V3)
 // -------------------------------------------------------------
 
-export async function getAggregatedIntelligence(options: FetchOptions): Promise<AggregationResult> {
-    const isCrisisMode = !!options.isCrisisMode;
-    const sourcesQueried: string[] = [];
+export async function getAggregatedNews(keyword: string, isCrisisMode: boolean = false): Promise<PulseItem[]> {
+    const promises = [
+        fetchNewsApi(keyword, isCrisisMode),
+        fetchGNews(keyword, isCrisisMode),
+        fetchWorldNews(keyword, isCrisisMode),
+        fetchTheNewsApi(keyword, isCrisisMode)
+    ];
 
-    let baseQuery = options.query ? options.query : "geopolitics OR international relations OR security";
-    if (isCrisisMode && !options.query) {
-        baseQuery = "War OR Strike OR Invasion OR Emergency OR Security";
-    }
-    if (options.category && options.category !== 'general') {
-        baseQuery += ` ${options.category}`;
-    }
-
-    const promises: Promise<Omit<Article, 'biasMeta'>[]>[] = [];
-    const cat = options.category || 'general';
-    const reg = options.region || 'Global';
-
-    if (process.env.NEWS_API_KEY || process.env.NEXT_PUBLIC_NEWS_API_KEY) {
-        sourcesQueried.push('NewsAPI');
-        promises.push(fetchNewsAPI(baseQuery, isCrisisMode, cat, reg));
-    }
-    if (process.env.GNEWS_API_KEY || process.env.G_NEWS_API) {
-        sourcesQueried.push('GNews');
-        promises.push(fetchGNews(baseQuery, isCrisisMode, cat, reg));
-    }
-    if (process.env.PERIGON_API_KEY || process.env.PERIGON_KEY) {
-        sourcesQueried.push('Perigon');
-        promises.push(fetchPerigon(baseQuery, isCrisisMode, cat, reg));
-    }
-
-    // Promise.allSettled ensures resilience if one provider fails
     const results = await Promise.allSettled(promises);
-
-    let rawArticles: Omit<Article, 'biasMeta'>[] = [];
+    let allItems: PulseItem[] = [];
 
     results.forEach((result) => {
         if (result.status === 'fulfilled') {
-            rawArticles = [...rawArticles, ...result.value];
+            allItems = [...allItems, ...result.value];
         } else {
             console.error(`Provider failed:`, result.reason);
         }
     });
 
-    const totalFetched = rawArticles.length;
+    // Smart Filtering
+    allItems = allItems.filter(item => isRelevantGeopoliticalArticle(item.title, item.summary));
 
-    // 1. Smart Filtering
-    let filteredArticles = rawArticles.filter(art => {
-        if (!isRelevantGeopoliticalArticle(art)) return false;
-        return true;
-    });
+    // Deduplicate Engine based on title similarity and exact URL match
+    const unique: PulseItem[] = [];
+    const seenUrls = new Set<string>();
 
-    // 2. Bias Enrichment mapping
-    let enrichedArticles: Article[] = filteredArticles.map(enrichWithBiasMetadata);
+    for (const item of allItems) {
+        if (!item.url || seenUrls.has(item.url)) continue;
+        
+        let isDuplicate = false;
+        for (let i = 0; i < unique.length; i++) {
+            const existing = unique[i];
+            const similarity = calculateSimilarity(item.title, existing.title);
+            if (similarity >= 0.75) {
+                isDuplicate = true;
+                break;
+            }
+        }
 
-    // 3. Deduplication Engine
-    let deduplicatedArticles = deduplicateAndCluster(enrichedArticles);
+        if (!isDuplicate) {
+            seenUrls.add(item.url);
+            unique.push(item);
+        }
+    }
 
     // Sort by latest published date
-    deduplicatedArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    unique.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+    return unique;
+}
+
+export async function getAggregatedIntelligence(options: FetchOptions): Promise<AggregationResult> {
+    const isCrisisMode = !!options.isCrisisMode;
+
+    let baseQuery = options.query ? options.query : "geopolitics OR international relations OR security";
+    if (isCrisisMode && !options.query) {
+        baseQuery = "war OR health crisis OR food OR economy";
+    }
+    if (options.category && options.category !== 'general') {
+        baseQuery += ` ${options.category}`;
+    }
+
+    const pulseItems = await getAggregatedNews(baseQuery, isCrisisMode);
+
+    // Map the new PulseItem structure back to the legacy Article structure
+    const mappedArticles: Omit<Article, 'biasMeta'>[] = pulseItems.map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.summary,
+        url: p.url,
+        source: p.source,
+        domain: extractDomain(p.url),
+        publishedAt: p.publishedAt,
+        image: p.imageUrl === '/images/default-radar-placeholder.jpg' ? undefined : p.imageUrl,
+        tags: ['NEWS', (options.category && options.category !== 'general') ? options.category.toUpperCase() : (options.region || 'Global').toUpperCase()],
+        apiSource: 'Aggregator V3'
+    }));
+
+    // Enrich
+    const deduplicatedArticles: Article[] = mappedArticles.map(enrichWithBiasMetadata);
 
     if (deduplicatedArticles.length === 0) {
         const mockDomain = "reuters.com";
@@ -310,7 +329,7 @@ export async function getAggregatedIntelligence(options: FetchOptions): Promise<
             title: "Global Intelligence Feed Offline or Limited",
             description: "No secure signals received from integrated intelligence providers. Utilizing offline backups.",
             url: "#",
-            source: "Reuters",
+            source: "System",
             domain: mockDomain,
             publishedAt: new Date().toISOString(),
             tags: ["System Warning"]
@@ -321,13 +340,14 @@ export async function getAggregatedIntelligence(options: FetchOptions): Promise<
         news: deduplicatedArticles,
         videos: [],
         meta: {
-            sourcesQueried,
-            totalFetched,
+            sourcesQueried: ['NewsAPI', 'GNews', 'World News API', 'The News API'],
+            totalFetched: pulseItems.length,
             totalAfterDedup: deduplicatedArticles.length,
             mode: isCrisisMode ? 'crisis' : 'monitor'
         }
     };
 }
+
 
 // -------------------------------------------------------------
 // EXISTING WEATHER INTEGRATION

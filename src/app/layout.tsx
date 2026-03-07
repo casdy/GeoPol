@@ -9,6 +9,19 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo-geopol.png",
   },
+  appleWebApp: {
+    title: "GeoPol",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#020617", // slate-950
 };
 
 const inter = Inter({ subsets: ["latin"] });
