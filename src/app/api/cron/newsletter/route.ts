@@ -4,7 +4,7 @@ import * as fs from 'fs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const GEOPOL_BASE_URL = process.env.GEOPOL_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+const GEOPOL_BASE_URL = 'https://geo-pol-one.vercel.app';
 
 import { PulseItem } from '@/lib/types';
 import { getAggregatedIntelligence } from '@/lib/api';
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
       const intel = await getAggregatedIntelligence({ category: cat.name.toLowerCase() });
       
       // 2. Map the enriched unified Article back down into the newsletter PulseItem expectation
-      let headlines: PulseItem[] = intel.news.slice(0, 5).map((a: any) => ({
+      const headlines: PulseItem[] = intel.news.slice(0, 5).map((a: any) => ({
           id: a.id,
           title: a.title,
           url: a.url,
@@ -252,15 +252,6 @@ export async function GET(request: NextRequest) {
           summary: a.description || a.title,
           imageUrl: a.image || '/images/news-placeholder.jpg',
       }));
-
-      // 3. Generate High-CTR Hooks via Gemini
-      if (headlines.length > 0) {
-        const hooks = await generateNewsletterHooks(headlines);
-        headlines = headlines.map((h, i) => ({
-          ...h,
-          summary: hooks[i] || h.summary
-        }));
-      }
 
       return { category: cat.name, headlines };
     });
@@ -273,6 +264,19 @@ export async function GET(request: NextRequest) {
         rawCategories.push(res.value);
       }
     });
+
+    // 3. Generate High-CTR Hooks via Gemini (Batched into a single request to prevent 429 Rate Limits)
+    const allHeadlines = rawCategories.flatMap(cat => cat.headlines);
+    if (allHeadlines.length > 0) {
+      const allHooks = await generateNewsletterHooks(allHeadlines);
+      let hookIndex = 0;
+      rawCategories.forEach(cat => {
+        cat.headlines = cat.headlines.map(h => {
+          const hook = allHooks[hookIndex++];
+          return { ...h, summary: hook || h.summary };
+        });
+      });
+    }
 
     const force = request.nextUrl.searchParams.get('force') === 'true';
     const finalCategories = force ? rawCategories : deduplicateCategorized(rawCategories, dateString);
