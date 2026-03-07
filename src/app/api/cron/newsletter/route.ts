@@ -4,10 +4,11 @@ import * as fs from 'fs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const GEOPOL_BASE_URL = 'http://localhost:3000'; // Set to localhost for testing
+const GEOPOL_BASE_URL = process.env.GEOPOL_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 import { PulseItem } from '@/lib/types';
 import { getAggregatedIntelligence } from '@/lib/api';
+import { generateNewsletterHooks } from '@/lib/newsletter-ai';
 
 export interface CategorizedNewsletter {
   category: string;
@@ -242,7 +243,7 @@ export async function GET(request: NextRequest) {
       const intel = await getAggregatedIntelligence({ category: cat.name.toLowerCase() });
       
       // 2. Map the enriched unified Article back down into the newsletter PulseItem expectation
-      const headlines: PulseItem[] = intel.news.slice(0, 5).map(a => ({
+      let headlines: PulseItem[] = intel.news.slice(0, 5).map((a: any) => ({
           id: a.id,
           title: a.title,
           url: a.url,
@@ -251,6 +252,15 @@ export async function GET(request: NextRequest) {
           summary: a.description || a.title,
           imageUrl: a.image || '/images/news-placeholder.jpg',
       }));
+
+      // 3. Generate High-CTR Hooks via Gemini
+      if (headlines.length > 0) {
+        const hooks = await generateNewsletterHooks(headlines);
+        headlines = headlines.map((h, i) => ({
+          ...h,
+          summary: hooks[i] || h.summary
+        }));
+      }
 
       return { category: cat.name, headlines };
     });

@@ -26,7 +26,7 @@ interface DailyBriefingEmailProps {
   dateString?: string;
 }
 
-const GEOPOL_BASE_URL = 'https://geo-pol-one.vercel.app';
+const GEOPOL_BASE_URL = process.env.GEOPOL_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 export const DailyBriefingEmail = ({
   headlines,
