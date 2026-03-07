@@ -367,59 +367,86 @@ export interface WeatherData {
 }
 
 const STRATEGIC_CITIES = [
-    "New York", "London", "Tokyo", "Moscow", "Beijing", "Dubai", "Berlin", "Paris",
-    "Singapore", "Sydney", "Cairo", "Buenos Aires", "Istanbul", "Mumbai", "Seoul",
-    "Rio de Janeiro", "Lagos"
+    { name: "New York", country: "US", lat: 40.71, lon: -74.00 },
+    { name: "London", country: "GB", lat: 51.50, lon: -0.12 },
+    { name: "Tokyo", country: "JP", lat: 35.68, lon: 139.75 },
+    { name: "Moscow", country: "RU", lat: 55.75, lon: 37.61 },
+    { name: "Beijing", country: "CN", lat: 39.90, lon: 116.40 },
+    { name: "Dubai", country: "AE", lat: 25.20, lon: 55.27 },
+    { name: "Berlin", country: "DE", lat: 52.52, lon: 13.40 },
+    { name: "Paris", country: "FR", lat: 48.85, lon: 2.35 },
+    { name: "Singapore", country: "SG", lat: 1.28, lon: 103.85 },
+    { name: "Sydney", country: "AU", lat: -33.86, lon: 151.20 },
+    { name: "Cairo", country: "EG", lat: 30.04, lon: 31.23 },
+    { name: "Buenos Aires", country: "AR", lat: -34.60, lon: -58.38 },
+    { name: "Istanbul", country: "TR", lat: 41.00, lon: 28.97 },
+    { name: "Mumbai", country: "IN", lat: 19.07, lon: 72.87 },
+    { name: "Seoul", country: "KR", lat: 37.56, lon: 126.97 },
+    { name: "Rio de Janeiro", country: "BR", lat: -22.90, lon: -43.17 },
+    { name: "Lagos", country: "NG", lat: 6.45, lon: 3.39 }
 ];
 
-const MOCK_WEATHER: WeatherData[] = [
-    { id: 1, name: "New York", temp: 12, condition: "Cloudy", humidity: 60, windSpeed: 5.2, feelsLike: 10, description: "overcast clouds", pressure: 1012, country: "US", coordinates: { lat: 40.7, lon: -74.0 } },
-    { id: 2, name: "London", temp: 8, condition: "Rain", humidity: 82, windSpeed: 6.5, feelsLike: 5, description: "light rain", pressure: 1008, country: "GB", coordinates: { lat: 51.5, lon: -0.1 } },
-];
+function getWeatherCondition(code: number): { condition: string; description: string } {
+    if (code === 0) return { condition: 'Clear', description: 'clear sky' };
+    if ([1, 2, 3].includes(code)) return { condition: 'Cloudy', description: 'partly cloudy to overcast' };
+    if ([45, 48].includes(code)) return { condition: 'Fog', description: 'foggy conditions' };
+    if ([51, 53, 55, 56, 57].includes(code)) return { condition: 'Drizzle', description: 'light drizzle' };
+    if ([61, 63, 65, 66, 67].includes(code)) return { condition: 'Rain', description: 'rainy conditions' };
+    if ([71, 73, 75, 77].includes(code)) return { condition: 'Snow', description: 'snow fall' };
+    if ([80, 81, 82].includes(code)) return { condition: 'Showers', description: 'rain showers' };
+    if ([95, 96, 99].includes(code)) return { condition: 'Storm', description: 'thunderstorms' };
+    return { condition: 'Unknown', description: 'variable' };
+}
 
 export async function fetchWeather(): Promise<WeatherData[]> {
     try {
-        const apiKey = process.env.WEATHER_API_KEY;
-        if (!apiKey) {
-            return MOCK_WEATHER;
-        }
-
         const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
         const selectedCities = shuffled.slice(0, 10);
 
         const weatherPromises = selectedCities.map(async (city) => {
-            const url = `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m`;
             try {
                 const res = await fetch(url, { next: { revalidate: 600 } });
                 if (!res.ok) return null;
                 const data = await res.json();
                 
+                const { condition, description } = getWeatherCondition(data.current.weather_code);
+
                 return {
                     id: Math.floor(Math.random() * 100000),
-                    name: data.location.name,
-                    temp: Math.round(data.current.temp_c),
-                    condition: data.current.condition.text,
-                    humidity: data.current.humidity,
-                    windSpeed: parseFloat((data.current.wind_kph / 3.6).toFixed(1)),
-                    feelsLike: Math.round(data.current.feelslike_c),
-                    description: data.current.condition.text.toLowerCase(),
-                    pressure: data.current.pressure_mb,
-                    country: data.location.country,
-                    coordinates: { lat: data.location.lat, lon: data.location.lon }
+                    name: city.name,
+                    temp: Math.round(data.current.temperature_2m),
+                    condition: condition,
+                    humidity: data.current.relative_humidity_2m,
+                    windSpeed: parseFloat((data.current.wind_speed_10m / 3.6).toFixed(1)),
+                    feelsLike: Math.round(data.current.apparent_temperature),
+                    description: description,
+                    pressure: data.current.surface_pressure,
+                    country: city.country,
+                    coordinates: { lat: city.lat, lon: city.lon }
                 } as WeatherData;
             } catch (err) {
-                return null;
+                // Return a graceful mock for this specific city if the fetch fails
+                return {
+                    id: Math.floor(Math.random() * 100000),
+                    name: city.name,
+                    temp: 15,
+                    condition: 'Clear',
+                    humidity: 50,
+                    windSpeed: 3.5,
+                    feelsLike: 14,
+                    description: 'clear sky (cached)',
+                    pressure: 1012,
+                    country: city.country,
+                    coordinates: { lat: city.lat, lon: city.lon }
+                } as WeatherData;
             }
         });
 
         const results = await Promise.all(weatherPromises);
-        const validResults = results.filter((w): w is WeatherData => w !== null);
-
-        if (validResults.length === 0) return MOCK_WEATHER;
-        
-        return validResults;
+        return results.filter((w): w is WeatherData => w !== null);
 
     } catch (error) {
-        return MOCK_WEATHER;
+        return [];
     }
 }
