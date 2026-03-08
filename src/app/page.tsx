@@ -41,7 +41,10 @@ function DashboardContent() {
   const { data: intelligenceData, isLoading } = useQuery({
     queryKey: ['intelligenceFeed', region, debouncedSearchQuery, isCrisisMode, category],
     queryFn: () => getAggregatedIntelligence({ region, query: debouncedSearchQuery, isCrisisMode, category }),
-    refetchInterval: isCrisisMode ? 15000 : 60000,
+    // Pause all background refreshes while the user is reading an article — prevents
+    // the deep-link modal from re-opening or flickering after the user closes it.
+    refetchInterval: activeArticle ? false : (isCrisisMode ? 15000 : 60000),
+    refetchOnWindowFocus: !activeArticle,
   });
 
   const allArticles = intelligenceData?.news || [];

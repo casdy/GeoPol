@@ -6,7 +6,7 @@ import * as cheerio from 'cheerio';
 
 import { rateLimit } from '@/lib/rate-limit';
 
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const limiter = rateLimit(5, 60 * 1000); // 5 requests per minute
 
 export async function summarizeArticle(url: string) {
@@ -24,9 +24,9 @@ export async function summarizeArticle(url: string) {
     }
 
     try {
-        if (!process.env.API_KEY) {
+        if (!process.env.GEMINI_API_KEY) {
             // Log missing key internally, return generic error
-            console.error('SERVER CONFIG ERROR: API_KEY is missing.');
+            console.error('SERVER CONFIG ERROR: GEMINI_API_KEY is missing.');
             return { error: 'Service temporarily unavailable.' };
         }
 
@@ -36,7 +36,7 @@ export async function summarizeArticle(url: string) {
         const referer = headerPayload.get('referer') || `http://${headerPayload.get('host')}` || 'http://localhost:3000';
 
         const model = genAI.getGenerativeModel(
-            { model: 'gemini-2.0-flash' },
+            { model: 'gemini-2.5-flash' },
             { customHeaders: { 'Referer': referer } }
         );
 
