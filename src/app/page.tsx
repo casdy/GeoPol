@@ -17,6 +17,7 @@ import PodcastPlayer from '@/components/shared/PodcastPlayer';
 import PaywallModal from '@/components/dashboard/PaywallModal';
 import { MobileLayout, TabletLayout, DesktopLayout } from '@/components/layout/DeviceLayouts';
 import Footer from '@/components/layout/Footer';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import { Loader2, Search, Radar, Zap, Globe, Menu, ChevronDown, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -183,7 +184,7 @@ function DashboardContent() {
       </h2>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
+        <DashboardSkeleton />
       ) : (
         <>
           <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
@@ -215,7 +216,9 @@ function DashboardContent() {
 
       <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
         {isGNewsLoading ? (
-          <div className="col-span-2 flex justify-center py-10"><Loader2 className={`animate-spin ${theme.accent}`} /></div>
+          <>
+            {[1, 2, 3, 4].map(i => <ItemCardSkeleton key={i} variant="compact" />)}
+          </>
         ) : (
           <AnimatePresence mode='popLayout'>
             {sidebarStories.map((item, i) => (
@@ -631,7 +634,7 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-neutral-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-orange-500 animate-spin" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-neutral-950 p-8"><DashboardSkeleton /></div>}>
       <DashboardContent />
     </Suspense>
   );
