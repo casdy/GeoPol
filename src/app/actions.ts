@@ -1,12 +1,11 @@
 'use server';
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { headers } from 'next/headers';
 import * as cheerio from 'cheerio';
 
 import { rateLimit } from '@/lib/rate-limit';
+import { generateText } from '@/lib/ai-router';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const limiter = rateLimit(5, 60 * 1000); // 5 requests per minute
 
 export async function summarizeArticle(url: string) {
@@ -24,22 +23,6 @@ export async function summarizeArticle(url: string) {
     }
 
     try {
-        if (!process.env.GEMINI_API_KEY) {
-            // Log missing key internally, return generic error
-            console.error('SERVER CONFIG ERROR: GEMINI_API_KEY is missing.');
-            return { error: 'Service temporarily unavailable.' };
-        }
-
-        // 2. Call Gemini
-        const headerPayload = await headers();
-        // Use the incoming referrer, or fallback to the host
-        const referer = headerPayload.get('referer') || `http://${headerPayload.get('host')}` || 'http://localhost:3000';
-
-        const model = genAI.getGenerativeModel(
-            { model: 'gemini-2.5-flash' },
-            { customHeaders: { 'Referer': referer } }
-        );
-
         const res = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -48,7 +31,7 @@ export async function summarizeArticle(url: string) {
         });
 
         if (!res.ok) {
-            return { error: 'Unable to access source article.' }; // Generic error
+            return { error: 'Unable to access source article.' };
         }
 
         const html = await res.text();
@@ -69,19 +52,13 @@ export async function summarizeArticle(url: string) {
     - Point 2
     - Point 3`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        // generateText handles Gemini → HuggingFace fallback automatically
+        const text = await generateText(prompt);
 
         return { summary: text };
 
     } catch (error: any) {
-        // 3. Error Suppression
-        // Log the full error to server logs for debugging
         console.error('SECURE SERVER LOG - Summarization Error:', error);
-
-        // Return a sanitized, generic error to the client
-        return { error: 'An processing error occurred. Our team has been notified.' };
+        return { error: 'A processing error occurred. Our team has been notified.' };
     }
 }
-

@@ -14,6 +14,7 @@ import HamburgerMenu from '@/components/dashboard/HamburgerMenu';
 import CategoryNav from '@/components/dashboard/CategoryNav';
 import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import PodcastPlayer from '@/components/shared/PodcastPlayer';
+import PaywallModal from '@/components/dashboard/PaywallModal';
 import { MobileLayout, TabletLayout, DesktopLayout } from '@/components/layout/DeviceLayouts';
 import Footer from '@/components/layout/Footer';
 import { Loader2, Search, Radar, Zap, Globe, Menu, ChevronDown, Clock } from 'lucide-react';
@@ -28,6 +29,8 @@ function DashboardContent() {
   const [isCrisisMode, setIsCrisisMode] = useState(false);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [category, setCategory] = useState('general');
+  const [isPremium, setIsPremium] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   // Debounce search query to prevent excessive API calls
   useEffect(() => {
@@ -340,10 +343,17 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Audio Overview Podcast Section */}
+        {/* Audio Overview Podcast Section - HIDDEN FOR UPCOMING REBRAND */}
+        {/* 
         <section className="mt-6">
-          <PodcastPlayer type="overview" data={mainStories.slice(0, 5)} />
+          <PodcastPlayer 
+            type="overview" 
+            data={mainStories.slice(0, 5)} 
+            isPremium={isPremium}
+            onSubscribeClick={() => setIsPaywallOpen(true)}
+          />
         </section>
+        */}
 
         {/* Device Based Layout Blocks */}
         <DesktopLayout>
@@ -602,8 +612,17 @@ function DashboardContent() {
           })()}
         </MobileLayout>
 
-        <Footer />
+        <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
       </div>
+
+      <PaywallModal 
+        isOpen={isPaywallOpen} 
+        onClose={() => setIsPaywallOpen(false)} 
+        onSubscribe={() => {
+          setIsPremium(true);
+          setIsPaywallOpen(false);
+        }} 
+      />
 
       </main>
     </div>

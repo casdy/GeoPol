@@ -1,21 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText } from "./ai-router";
 import { PulseItem } from "./types";
 
-const geminiApiKey = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-
 export async function generateNewsletterHooks(articles: PulseItem[]): Promise<string[]> {
-  if (!geminiApiKey) {
-    throw new Error("Missing GEMINI_API_KEY environment variable. Please add it to your .env.local file.");
-  }
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-    },
-  });
-
   const prompt = `
     You are an elite intelligence briefer writing for the "Pulse Daily" geopolitics newsletter.
     I will provide you with a list of news articles. 
@@ -46,12 +32,12 @@ export async function generateNewsletterHooks(articles: PulseItem[]): Promise<st
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const textInfo = result.response.text();
+    // generateText handles Gemini → HuggingFace fallback automatically
+    const textInfo = await generateText(prompt, true);
     let cleanText = textInfo.replace(/```json/gi, "").replace(/```/g, "").trim();
 
-    const jsonStartIdx = cleanText.indexOf('[');
-    const jsonEndIdx = cleanText.lastIndexOf(']');
+    const jsonStartIdx = cleanText.indexOf("[");
+    const jsonEndIdx = cleanText.lastIndexOf("]");
     if (jsonStartIdx !== -1 && jsonEndIdx !== -1) {
       cleanText = cleanText.substring(jsonStartIdx, jsonEndIdx + 1);
     }
@@ -59,14 +45,14 @@ export async function generateNewsletterHooks(articles: PulseItem[]): Promise<st
     const hooks: string[] = JSON.parse(cleanText);
 
     if (!Array.isArray(hooks) || hooks.length !== articles.length) {
-      console.warn("Gemini returned invalid number of hooks. Falling back to original summaries.");
-      return articles.map(a => a.summary);
+      console.warn("AI returned invalid number of hooks. Falling back to original summaries.");
+      return articles.map((a) => a.summary);
     }
 
     return hooks;
   } catch (error: any) {
     console.error("Error generating newsletter hooks:", error);
-    // Fallback securely to original summaries on AI failure so newsletter doesn't break
-    return articles.map(a => a.summary);
+    // Fallback securely to original summaries so the newsletter never breaks
+    return articles.map((a) => a.summary);
   }
 }

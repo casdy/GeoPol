@@ -1,37 +1,20 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const geminiApiKey = process.env.GEMINI_API_KEY || "";
-
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(geminiApiKey);
+import { generateText } from "@/lib/ai-router";
 
 export interface PodcastLine {
   speaker: "host";
   text: string;
 }
 
-export async function generateConversationalScript(params: { 
-  type: 'overview' | 'deep-dive', 
-  data: any,
-  hostName?: string
+export async function generateConversationalScript(params: {
+  type: "overview" | "deep-dive";
+  data: any;
+  hostName?: string;
 }): Promise<PodcastLine[]> {
-  if (!geminiApiKey) {
-    throw new Error("Missing GEMINI_API_KEY environment variable. Please add it to your .env.local file.");
-  }
-
   const HOST_NAMES = ["Alexander", "Caleb", "Josh", "Wale", "Iyke"];
   const randomHost = HOST_NAMES[Math.floor(Math.random() * HOST_NAMES.length)];
   const host = params.hostName || randomHost;
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    // Force JSON output structure
-    generationConfig: {
-      responseMimeType: "application/json",
-    },
-  });
 
   let promptContext = "";
   if (params.type === "overview") {
@@ -72,118 +55,128 @@ export async function generateConversationalScript(params: {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const textInfo = result.response.text();
-    // Safely parse the JSON, stripping any potential markdown formatting the AI might still add
+    const textInfo = await generateText(prompt, true);
     let cleanText = textInfo.replace(/```json/gi, "").replace(/```/g, "").trim();
-    
-    // In-depth validation: Ensure we don't crash if Gemini hallucinated prepended text
-    const jsonStartIdx = cleanText.indexOf('[');
-    const jsonEndIdx = cleanText.lastIndexOf(']');
+
+    const jsonStartIdx = cleanText.indexOf("[");
+    const jsonEndIdx = cleanText.lastIndexOf("]");
     if (jsonStartIdx !== -1 && jsonEndIdx !== -1) {
       cleanText = cleanText.substring(jsonStartIdx, jsonEndIdx + 1);
     }
 
     const script: PodcastLine[] = JSON.parse(cleanText);
-    
+
     if (!Array.isArray(script) || script.length === 0) {
-      throw new Error("Gemini returned an empty script array.");
+      throw new Error("AI returned an empty script array.");
     }
-    
+
     return script;
   } catch (error: any) {
     console.error("Error generating podcast script:", error);
-    throw new Error("Failed to generate podcast script from Gemini.");
+    throw new Error("Failed to generate podcast script.");
   }
 }
 
 /**
- * Builds a WAV file buffer from raw 16-bit Little-Endian PCM bytes.
- * Gemini TTS returns audio/L16;codec=pcm;rate=24000 (16-bit signed, mono, 24kHz).
+ * Gemini (Google Cloud) TTS — PREMIUM audio source.
+ * High-quality neural voices.
  */
-function buildWavHeader(pcmLength: number, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): Buffer {
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const header = Buffer.alloc(44);
+export async function generateAudioBuffer(
+  text: string,
+  speaker: "host"
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY not configured.");
+  }
 
-  header.write("RIFF", 0);
-  header.writeUInt32LE(36 + pcmLength, 4);       // ChunkSize
-  header.write("WAVE", 8);
-  header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16);                   // Subchunk1Size (PCM)
-  header.writeUInt16LE(1, 20);                    // AudioFormat = PCM
-  header.writeUInt16LE(numChannels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitsPerSample, 34);
-  header.write("data", 36);
-  header.writeUInt32LE(pcmLength, 40);            // Subchunk2Size
+  // Google Cloud Text-to-Speech API
+  const response = await fetch(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        input: { text },
+        voice: {
+          languageCode: "en-US",
+          name: "en-US-Neural2-D", // Premium neural male voice
+        },
+        audioConfig: {
+          audioEncoding: "MP3",
+        },
+      }),
+    }
+  );
 
-  return header;
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Gemini TTS Error:", errText);
+    throw new Error(`Gemini TTS error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.audioContent) {
+    throw new Error("Gemini TTS returned no audio content.");
+  }
+
+  return `data:audio/mp3;base64,${data.audioContent}`;
 }
 
 /**
- * Uses Gemini 2.5 Flash TTS (gemini-2.5-flash-preview-tts) to synthesize audio.
- * Returns a base64-encoded WAV data URI suitable for the HTML <audio> element.
+ * RapidAPI (Open-AI21) TTS — FUTURE/Alternative audio source.
  */
-export async function generateAudioBuffer(text: string, speaker: "host"): Promise<string> {
-  if (!geminiApiKey) {
-    throw new Error("Missing GEMINI_API_KEY. Please add it to your .env.local file.");
+export async function generateAudioBufferRapid(
+  text: string,
+  voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy"
+): Promise<string> {
+  const rapidKey = process.env.X_Rapid_Api_Key;
+  if (!rapidKey) {
+    throw new Error("X_Rapid_Api_Key not configured.");
   }
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  // "Charon" is a deep, authoritative male voice
-                  voiceName: "Charon",
-                },
-              },
-            },
-          },
-        }),
-      }
-    );
+  const response = await fetch("https://open-ai21.p.rapidapi.com/texttospeech", {
+    method: "POST",
+    headers: {
+      "x-rapidapi-key": rapidKey.replace(/'/g, "").trim(),
+      "x-rapidapi-host": "open-ai21.p.rapidapi.com",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "tts-1",
+      input: text,
+      voice: voice,
+    }),
+  });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(`Gemini TTS API error: ${response.status} - ${JSON.stringify(errData)}`);
-    }
-
-    const data = await response.json();
-    const parts = data?.candidates?.[0]?.content?.parts;
-    if (!parts || parts.length === 0) {
-      throw new Error("Gemini TTS returned no audio parts.");
-    }
-
-    const audioPart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("audio/"));
-    if (!audioPart) {
-      throw new Error("Gemini TTS response contained no audio inline data.");
-    }
-
-    // The API returns raw PCM: audio/L16;codec=pcm;rate=24000 (16-bit LE, mono, 24kHz)
-    const pcmBase64 = audioPart.inlineData.data as string;
-    const pcmBuffer = Buffer.from(pcmBase64, "base64");
-
-    // Wrap PCM in a valid WAV container
-    const wavHeader = buildWavHeader(pcmBuffer.length);
-    const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
-
-    // Return as a base64 WAV data URI the browser can play natively
-    return `data:audio/wav;base64,${wavBuffer.toString("base64")}`;
-
-  } catch (error: any) {
-    console.error("Gemini TTS Generation Error:", error);
-    throw new Error(`Failed to generate audio: ${error.message}`);
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("RapidAPI TTS Error:", errText);
+    throw new Error(`RapidAPI TTS error: ${response.status}`);
   }
+
+  const data = await response.json();
+  // RapidAPI open-ai21 typically returns { "status": "ok", "url": "..." } 
+  // or a base64 string depending on the exact sub-endpoint or response config.
+  // Based on common "open-ai21" wrappers, it might return a direct URL or base64.
+  if (data.audio_url) {
+    return data.audio_url;
+  }
+  
+  if (data.audioContent) {
+    return `data:audio/mp3;base64,${data.audioContent}`;
+  }
+
+  throw new Error("RapidAPI TTS returned no recognizable audio content.");
 }
+
+/**
+ * HF TTS Fallback (Future Reference)
+ */
+/*
+export async function generateAudioBufferHF(text: string): Promise<string> {
+  const hfKey = process.env.HF_KEY;
+  // ... implementation ...
+}
+*/
+

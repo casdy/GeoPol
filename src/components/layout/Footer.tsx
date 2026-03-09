@@ -68,7 +68,11 @@ const footerSections = [
   },
 ];
 
-export default function Footer() {
+interface FooterProps {
+  onRoadmapClick?: () => void;
+}
+
+export default function Footer({ onRoadmapClick }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
@@ -158,6 +162,12 @@ export default function Footer() {
             </p>
           </div>
           <div className="flex items-center gap-5 flex-wrap text-[10px] uppercase font-black tracking-[0.2em] text-neutral-600">
+            <button 
+              onClick={onRoadmapClick}
+              className="hover:text-orange-500 transition-colors text-orange-500/80"
+            >
+              Intelligence Roadmap
+            </button>
             <a href="#" className="hover:text-neutral-400 transition-colors">Privacy Protocol</a>
             <a href="#" className="hover:text-neutral-400 transition-colors">System Terms</a>
             <a href="#" className="hover:text-neutral-400 transition-colors">Data Ethics</a>

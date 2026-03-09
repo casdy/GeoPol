@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Globe, Calendar, ExternalLink, Bot, Sparkles, Loader2, FileText, Share2, Check } from 'lucide-react';
-import { summarizeArticle } from '@/app/actions';
+import { X, Globe, Calendar, ExternalLink, Bot, Sparkles, Loader2, FileText, Share2, Check, Shield } from 'lucide-react';
 import { Article } from '@/lib/types';
 
 interface NewsModalProps {
@@ -16,16 +15,45 @@ import PodcastPlayer from '@/components/shared/PodcastPlayer';
 import NewsletterForm from '@/components/shared/NewsletterForm';
 
 export default function NewsModal({ article, onClose }: NewsModalProps) {
-    const [summary, setSummary] = useState<string | null>(null);
-    const [isSummarizing, setIsSummarizing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
     // Paywall State
     const [isPaywallOpen, setIsPaywallOpen] = useState(false);
     const [hasAccess, setHasAccess] = useState(false);
 
     // Share State
     const [isCopied, setIsCopied] = useState(false);
+
+    // Programmatic Brief Generator (MoM style)
+    const generateProgrammaticBrief = (art: Article) => {
+        const sourceName = art.source.toUpperCase();
+        const dateStr = art.publishedAt ? new Date(art.publishedAt).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'long', day: '2-digit' 
+        }).toUpperCase() : 'PENDING VERIFICATION';
+        
+        const mainPoints = art.description || art.summary || "Current data stream provides limited descriptive metadata.";
+        
+        return (
+            <div className="space-y-4">
+                <div className="border border-orange-500/20 bg-black/40 p-3 rounded-sm mb-4">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono text-neutral-500 uppercase tracking-tighter">
+                    <div><span className="text-orange-500/70">REPORT_ID:</span> GP-{Math.floor(1000 + Math.random() * 9000)}</div>
+                    <div><span className="text-orange-500/70">TIMESTAMP:</span> {dateStr}</div>
+                    <div><span className="text-orange-500/70">SUBJECT:</span> {art.title.slice(0, 30)}...</div>
+                    <div><span className="text-orange-500/70">SOURCE:</span> {sourceName}</div>
+                  </div>
+                </div>
+
+                <p className="leading-relaxed">
+                    <span className="text-orange-500/80 font-bold tracking-widest">[SUMMARY]</span> <br/>
+                    Intelligence assets from <span className="text-white">{art.source}</span> have released a critical SITREP regarding <span className="text-white italic">"{art.title}"</span>. Initial data ingestion indicates that {mainPoints.charAt(0).toLowerCase() + mainPoints.slice(1)} This development marks a significant shift in current sector dynamics.
+                </p>
+
+                <p className="leading-relaxed border-t border-neutral-800 pt-3">
+                    <span className="text-orange-500/80 font-bold tracking-widest">[STRATEGIC ASSESSMENT]</span> <br/>
+                    The current vector suggests that the implications of this event extend beyond immediate news cycles. Analyst consensus identifies this as a high-priority intelligence stream requiring immediate tactical observation and cross-referencing with existing geopolitical baselines to determine long-term stability impact.
+                </p>
+            </div>
+        );
+    };
 
     const handleShare = async () => {
         if (!article) return;
@@ -52,54 +80,17 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
     };
 
     useEffect(() => {
-        const loadContent = async () => {
-            if (article) {
-                document.body.style.overflow = 'hidden';
-                setSummary(null);
-                setError(null);
-                // Reset Paywall Access on new article? 
-                // For demo purposes, maybe we keep access if paid once, or reset.
-                // Let's reset to force the demo experience every time or per session?
-                // setHasAccess(false); 
-            } else {
-                document.body.style.overflow = 'auto';
-            }
-        };
-        loadContent();
+        if (article) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
         return () => { document.body.style.overflow = 'auto'; };
     }, [article]);
-
-    const handleSummarizeRequest = () => {
-        if (hasAccess) {
-            generateSummary();
-        } else {
-            setIsPaywallOpen(true);
-        }
-    };
 
     const handlePaymentSuccess = () => {
         setIsPaywallOpen(false);
         setHasAccess(true);
-        generateSummary();
-    };
-
-    const generateSummary = async () => {
-        if (!article) return;
-        setIsSummarizing(true);
-        setError(null);
-
-        try {
-            const result = await summarizeArticle(article.url);
-            if (result.error) {
-                setError(result.error);
-            } else if (result.summary) {
-                setSummary(result.summary);
-            }
-        } catch (err) {
-            setError('An unexpected error occurred while generating the briefing.');
-        } finally {
-            setIsSummarizing(false);
-        }
     };
 
     if (!article) return null;
@@ -197,18 +188,22 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                                 {article.title}
                             </h2>
 
-                            {/* The Intelligence Brief (Snippet) */}
-                            <div className="mb-8 space-y-4">
-                                <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-2 border-b border-neutral-800 pb-2">Intelligence Brief</h3>
+                            {/* The Intelligence Brief (MoM Synthesized Narrative) */}
+                            <div className="mb-8">
+                                <h3 className="text-sm font-bold text-orange-500/80 uppercase tracking-[0.2em] mb-4 border-b border-neutral-800 pb-2 flex items-center gap-2">
+                                    <Shield className="w-3.5 h-3.5" />
+                                    Intelligence Briefing
+                                </h3>
                                 <div className="prose prose-invert prose-sm max-w-none">
-                                    <div className="whitespace-pre-wrap leading-relaxed text-neutral-300 font-serif text-base tracking-wide border-l-2 border-blue-500/50 pl-4">
-                                        {article.summary || article.description || "No intelligence brief available. Please view the full report at the source."}
+                                    <div className="text-neutral-300 font-mono text-sm tracking-tight py-1 bg-orange-500/[0.02]">
+                                        {generateProgrammaticBrief(article)}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* AI Intelligence Briefing Section */}
+                            {/* AI Intelligence Briefing Section - HIDDEN FOR REBRAND */}
                             <div className="mb-8 border-t border-neutral-800 pt-6">
+                                {/* 
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-sm font-bold text-neutral-300 flex items-center gap-2 uppercase tracking-wide">
                                         <Bot className="w-4 h-4 text-orange-500" />
@@ -224,36 +219,29 @@ export default function NewsModal({ article, onClose }: NewsModalProps) {
                                         </button>
                                     )}
                                 </div>
+                                */}
 
-                                {(summary || isSummarizing || error) && (
-                                    <div className="bg-black/30 border border-dashed border-neutral-700 rounded-sm p-4 min-h-[100px] animate-in slide-in-from-top-2">
-                                        {isSummarizing ? (
-                                            <div className="h-full flex flex-col items-center justify-center gap-3 text-neutral-500 py-4 font-mono text-xs">
-                                                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-                                                <span className="animate-pulse">ANALYZING CONTENT...</span>
-                                            </div>
-                                        ) : error ? (
-                                            <div className="text-red-500 text-xs font-mono text-center py-2">
-                                        // ERROR: {error}
-                                            </div>
-                                        ) : (
-                                            <div className="prose prose-invert prose-sm max-w-none">
-                                                <div className="whitespace-pre-wrap leading-relaxed text-orange-200/90 font-mono text-xs">
-                                                    {summary}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="bg-black/30 border border-dashed border-neutral-800 rounded-sm p-4 text-center">
+                                    <p className="text-[10px] text-neutral-600 font-mono uppercase tracking-[0.2em]">
+                                        Neural Analysis Module: Offline // Roadmap Phase 2
+                                    </p>
+                                </div>
                             </div>
 
-                            {/* Deep Dive Podcast Player */}
+                            {/* Deep Dive Podcast Player - HIDDEN FOR REBRAND */}
+                            {/* 
                             <div className="mb-8">
-                                <PodcastPlayer type="deep-dive" data={{ article, fullText: article.summary || article.description }} />
+                                <PodcastPlayer 
+                                    type="deep-dive" 
+                                    data={{ article, fullText: article.summary || article.description }} 
+                                    isPremium={hasAccess}
+                                    onSubscribeClick={() => setIsPaywallOpen(true)}
+                                />
                                 <p className="text-[10px] text-neutral-500 mt-3 italic font-mono text-center">
                                     "AI analysis is based on the publisher's provided summary."
                                 </p>
                             </div>
+                            */}
 
                             {/* Newsletter Subscription */}
                             <div className="mb-8 border-t border-neutral-800 pt-8">

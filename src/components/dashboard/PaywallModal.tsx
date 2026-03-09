@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, CreditCard, Sparkles, CheckCircle, ShieldCheck } from 'lucide-react';
+import { X, Lock, CreditCard, Sparkles, CheckCircle, ShieldCheck, Headphones } from 'lucide-react';
 import { useState } from 'react';
 
 interface PaywallModalProps {
@@ -13,11 +13,11 @@ export default function PaywallModal({ isOpen, onClose, onSubscribe }: PaywallMo
 
     const handleSubscribe = () => {
         setIsProcessing(true);
-        // Mock payment processing delay
+        // Mock waitlist registration delay
         setTimeout(() => {
             setIsProcessing(false);
-            onSubscribe();
-        }, 2000);
+            onSubscribe(); // Keep original callback name for compatibility
+        }, 1500);
     };
 
     return (
@@ -62,26 +62,33 @@ export default function PaywallModal({ isOpen, onClose, onSubscribe }: PaywallMo
                                 </div>
                             </div>
 
-                            <h2 className="text-2xl font-black text-white italic tracking-tighter mb-2">
-                                UNLOCK <span className="text-orange-500">AI ANALYST</span>
+                             <h2 className="text-2xl font-black text-white italic tracking-tighter mb-2">
+                                UPCOMING <span className="text-orange-500">INTELLIGENCE</span> UPDATES
                             </h2>
                             <p className="text-neutral-400 text-sm mb-8 font-mono">
-                                PREMIUM INTELLIGENCE BRIEFING ACCESS REQUIRED
+                                FUTURE CAPABILITIES & ROADMAP PHASE 2
                             </p>
 
                             <div className="space-y-4 mb-8 text-left">
                                 <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-md border border-neutral-800">
                                     <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
                                     <div>
-                                        <h4 className="text-sm font-bold text-white uppercase">Instant Summaries</h4>
-                                        <p className="text-xs text-neutral-500">AI-generated executive briefs of complex geopolitical events.</p>
+                                        <h4 className="text-sm font-bold text-white uppercase">Neural Summaries</h4>
+                                        <p className="text-xs text-neutral-500">Next-gen AI context extraction for complex events. [Phase 2]</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-md border border-neutral-800">
+                                    <Headphones className="w-5 h-5 text-orange-500 shrink-0" />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white uppercase">Voice Briefings</h4>
+                                        <p className="text-xs text-neutral-500">Immersive audio reports for passive intelligence gathering. [In Dev]</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-md border border-neutral-800">
                                     <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
                                     <div>
-                                        <h4 className="text-sm font-bold text-white uppercase">Verified Sources</h4>
-                                        <p className="text-xs text-neutral-500">Cross-reference analysis from multiple intelligence streams.</p>
+                                        <h4 className="text-sm font-bold text-white uppercase">Verified Vectors</h4>
+                                        <p className="text-xs text-neutral-500">Multi-source verification using validated intelligence streams. [Planned]</p>
                                     </div>
                                 </div>
                             </div>
@@ -92,16 +99,16 @@ export default function PaywallModal({ isOpen, onClose, onSubscribe }: PaywallMo
                                 className="w-full py-4 bg-orange-600 hover:bg-orange-500 text-black font-bold uppercase tracking-widest rounded-sm transition-all shadow-[0_0_20px_rgba(234,88,12,0.3)] hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {isProcessing ? (
-                                    <>Processing...</>
+                                    <>SECURE REGISTRATION...</>
                                 ) : (
                                     <>
-                                        <CreditCard className="w-4 h-4" /> Subscribe for $10/mo
+                                        JOIN THE WAITLIST
                                     </>
                                 )}
                             </button>
 
                             <p className="mt-4 text-[10px] text-neutral-600 font-mono">
-                                SECURE ENCRYPTED TRANSACTION // CANCEL ANYTIME
+                                ALPHA ACCESS RESERVATION // NO CREDIT CARD REQUIRED
                             </p>
                         </div>
                     </motion.div>
