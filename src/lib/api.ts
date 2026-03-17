@@ -405,42 +405,54 @@ export async function fetchWeather(): Promise<WeatherData[]> {
 
         const weatherPromises = selectedCities.map(async (city) => {
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m`;
-            try {
-                const res = await fetch(url, { next: { revalidate: 600 } });
-                if (!res.ok) return null;
-                const data = await res.json();
-                
-                const { condition, description } = getWeatherCondition(data.current.weather_code);
+            
+            let attempts = 0;
+            const maxAttempts = 3;
+            
+            while (attempts < maxAttempts) {
+                try {
+                    const res = await fetch(url, { next: { revalidate: 600 } });
+                    if (!res.ok) throw new Error("HTTP error");
+                    const data = await res.json();
+                    
+                    const { condition, description } = getWeatherCondition(data.current.weather_code);
 
-                return {
-                    id: Math.floor(Math.random() * 100000),
-                    name: city.name,
-                    temp: Math.round(data.current.temperature_2m),
-                    condition: condition,
-                    humidity: data.current.relative_humidity_2m,
-                    windSpeed: parseFloat((data.current.wind_speed_10m / 3.6).toFixed(1)),
-                    feelsLike: Math.round(data.current.apparent_temperature),
-                    description: description,
-                    pressure: data.current.surface_pressure,
-                    country: city.country,
-                    coordinates: { lat: city.lat, lon: city.lon }
-                } as WeatherData;
-            } catch (err) {
-                // Return a graceful mock for this specific city if the fetch fails
-                return {
-                    id: Math.floor(Math.random() * 100000),
-                    name: city.name,
-                    temp: 15,
-                    condition: 'Clear',
-                    humidity: 50,
-                    windSpeed: 3.5,
-                    feelsLike: 14,
-                    description: 'clear sky (cached)',
-                    pressure: 1012,
-                    country: city.country,
-                    coordinates: { lat: city.lat, lon: city.lon }
-                } as WeatherData;
+                    return {
+                        id: Math.floor(Math.random() * 100000),
+                        name: city.name,
+                        temp: Math.round(data.current.temperature_2m),
+                        condition: condition,
+                        humidity: data.current.relative_humidity_2m,
+                        windSpeed: parseFloat((data.current.wind_speed_10m / 3.6).toFixed(1)),
+                        feelsLike: Math.round(data.current.apparent_temperature),
+                        description: description,
+                        pressure: data.current.surface_pressure,
+                        country: city.country,
+                        coordinates: { lat: city.lat, lon: city.lon }
+                    } as WeatherData;
+                } catch (err) {
+                    attempts++;
+                    if (attempts >= maxAttempts) {
+                        // Return a graceful mock for this specific city if the fetch fails after 3 tries
+                        return {
+                            id: Math.floor(Math.random() * 100000),
+                            name: city.name,
+                            temp: 15,
+                            condition: 'Clear',
+                            humidity: 50,
+                            windSpeed: 3.5,
+                            feelsLike: 14,
+                            description: 'clear sky (cached)',
+                            pressure: 1012,
+                            country: city.country,
+                            coordinates: { lat: city.lat, lon: city.lon }
+                        } as WeatherData;
+                    }
+                    // Wait before retrying (exponential backoff: 500ms, 1000ms...)
+                    await new Promise(resolve => setTimeout(resolve, attempts * 500));
+                }
             }
+            return null;
         });
 
         const results = await Promise.all(weatherPromises);

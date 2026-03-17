@@ -8,10 +8,12 @@ import { getAggregatedIntelligence } from '@/lib/api';
 import WorldMap from '@/components/dashboard/WorldMap';
 import LiveWire from '@/components/dashboard/LiveWire';
 import { ItemCard } from '@/components/dashboard/ItemCard';
+import { ItemCardSkeleton } from '@/components/dashboard/ItemCardSkeleton';
 import NewsModal from '@/components/dashboard/NewsModal';
 import CrisisToggle from '@/components/dashboard/CrisisToggle';
 import HamburgerMenu from '@/components/dashboard/HamburgerMenu';
 import CategoryNav from '@/components/dashboard/CategoryNav';
+import LiveNewsViewer from '@/components/dashboard/LiveNewsViewer';
 import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import PodcastPlayer from '@/components/shared/PodcastPlayer';
 import PaywallModal from '@/components/dashboard/PaywallModal';
@@ -247,7 +249,7 @@ function DashboardContent() {
 
       {/* Header */}
       <header className={`border-b ${theme.border} ${theme.headerBg} sticky top-0 z-50 transition-colors duration-700 lg:min-w-[1280px]`}>
-        <div className="w-full mx-auto px-4 lg:px-8 xl:px-12 h-16 flex items-center justify-between relative">
+        <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-44 max-w-[2000px] h-16 flex items-center justify-between relative">
           
           {/* Mobile Center Header Layout */}
           <div className="lg:hidden flex items-center justify-between w-full h-full">
@@ -330,7 +332,7 @@ function DashboardContent() {
       </header>
 
       {/* Main Content */}
-      <div className="w-full mx-auto px-4 lg:px-8 xl:px-12 py-6 space-y-6">
+      <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-44 max-w-[2000px] py-8 space-y-6 lg:space-y-8">
 
         {/* Map Section */}
         <section className={`transition-opacity duration-500 ${isCrisisMode ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
@@ -398,6 +400,8 @@ function DashboardContent() {
                     {heroArt && (
                       <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
                     )}
+                    {/* ── LIVE NEWS VIEWER — inserted between hero & live indicator ── */}
+                    <LiveNewsViewer />
                     {/* Live updates / subtext styling */}
                     <div className="flex items-center gap-2 mt-4 px-2">
                        <span className="bg-red-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm animate-pulse tracking-widest flex items-center gap-1.5">
@@ -484,6 +488,8 @@ function DashboardContent() {
                     {heroArt && (
                       <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
                     )}
+                    {/* ── LIVE NEWS VIEWER — Tablet ── */}
+                    <LiveNewsViewer />
                     <div className="flex items-center gap-2 mt-2 px-2">
                        <span className="bg-red-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm animate-pulse tracking-widest flex items-center gap-1.5">
                          <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" /> Live Data
@@ -561,6 +567,8 @@ function DashboardContent() {
                       </a>
                     </div>
                     <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
+                    {/* ── LIVE NEWS VIEWER — Mobile ── */}
+                    <LiveNewsViewer />
                   </div>
                 )}
                 

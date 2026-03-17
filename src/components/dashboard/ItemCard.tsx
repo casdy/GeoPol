@@ -27,7 +27,7 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
 
     const imageHeights = {
         default: 'h-44',
-        hero: 'h-64 md:h-80 lg:h-[400px]',
+        hero: 'flex-1 min-h-0',
         compact: 'h-32',
         'text-only': 'hidden'
     };
@@ -47,7 +47,7 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleClick}
-            className={`group relative ${!isTextOnly ? 'bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/50 hover:-translate-y-0.5 rounded-md' : 'bg-transparent border-b border-neutral-800/50 pb-3 hover:bg-neutral-900/20'} overflow-hidden transition-all duration-300 flex flex-col h-full cursor-pointer hover:shadow-[0_0_30px_rgba(234,88,12,0.1)]`}
+            className={`group relative ${!isTextOnly ? 'bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/50 hover:-translate-y-0.5 rounded-md' : 'bg-transparent border-b border-neutral-800/50 pb-3 hover:bg-neutral-900/20'} overflow-hidden transition-all duration-300 flex flex-col h-full cursor-pointer hover:shadow-[0_0_30px_rgba(234,88,12,0.1)] ${variant === 'hero' ? 'lg:h-[520px] md:h-[480px]' : ''}`}
         >
             {/* Tech Decoration Lines */}
             {!isTextOnly && (

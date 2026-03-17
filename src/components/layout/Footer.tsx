@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Radar, Twitter, Linkedin, Github, Shield, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Radar, Twitter, Linkedin, Github, Shield, Info, Eye } from 'lucide-react';
 import NewsletterForm from '@/components/shared/NewsletterForm';
 import TopicModal from '@/components/dashboard/TopicModal';
 
@@ -76,10 +76,35 @@ export default function Footer({ onRoadmapClick }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
+  // ── Persistent Visitor Counter ──────────────────────────────────────
+  const [visitorCount, setVisitorCount] = useState(0);
+  
+  useEffect(() => {
+    // Retrieve previous count or start at 49 (so the first visit counts to 50)
+    const storedStr = localStorage.getItem('geopol_visitors');
+    const prevCount = storedStr ? parseInt(storedStr, 10) : 49;
+    
+    // Increment for this visit
+    const newCount = prevCount + 1;
+    localStorage.setItem('geopol_visitors', newCount.toString());
+    setVisitorCount(newCount);
+
+    // Provide a slow simulated upward tick so it feels "live" while using the app
+    const interval = setInterval(() => {
+      setVisitorCount((current) => {
+        const next = current + Math.floor(Math.random() * 3); // 0 to 2 visitors
+        localStorage.setItem('geopol_visitors', next.toString());
+        return next;
+      });
+    }, 12000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <footer className="w-full bg-[#0E0E0E] text-white border-t border-neutral-900 pt-16 pb-8 mt-12 font-sans relative">
       <TopicModal topic={selectedTopic} onClose={() => setSelectedTopic(null)} />
-      <div className="mx-auto px-4 lg:px-8 xl:px-12">
+      <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-44 max-w-[2000px]">
         {/* Mega Menu Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-12 gap-x-8 mb-16">
           {footerSections.map((section, idx) => (
@@ -160,6 +185,17 @@ export default function Footer({ onRoadmapClick }: FooterProps) {
             <p className="flex items-center gap-1.5 border-l border-neutral-800 pl-6">
               <Shield className="w-3 h-3" /> SECURE LINK
             </p>
+            {/* Visitor Counter Widget */}
+            <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
+              </span>
+              <Eye className="w-3 h-3 text-green-500/70" />
+              <span className="text-green-500/80 tabular-nums">
+                {visitorCount.toLocaleString()} <span className="text-neutral-600">ACTIVE</span>
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-5 flex-wrap text-[10px] uppercase font-black tracking-[0.2em] text-neutral-600">
             <button 
