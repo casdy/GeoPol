@@ -264,11 +264,7 @@ function DashboardContent() {
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0">
-                  <img 
-                    src="/logo-geopol.png" 
-                    alt="GeoPol Logo" 
-                    className="w-7 h-7 rounded-sm"
-                  />
+                  <Radar className={`w-6 h-6 ${theme.accent} ${isCrisisMode ? 'animate-spin' : ''}`} />
                   <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
                 </div>
                 <div className="flex flex-col items-start">
@@ -294,11 +290,7 @@ function DashboardContent() {
           {/* Desktop Left Side: Logo, Search, Categories */}
           <div className="hidden lg:flex items-center gap-4 group flex-1">
             <div className="relative shrink-0">
-              <img 
-                src="/logo-geopol.png" 
-                alt="GeoPol Logo" 
-                className={`w-9 h-9 rounded-sm ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`}
-              />
+              <Radar className={`w-8 h-8 ${theme.accent} ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
               <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
             </div>
             <div className="flex flex-col shrink-0 mr-4">
