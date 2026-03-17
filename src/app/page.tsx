@@ -264,12 +264,21 @@ function DashboardContent() {
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0">
-                  <Radar className={`w-5 h-5 ${theme.accent} ${isCrisisMode ? 'animate-spin' : ''}`} />
+                  <img 
+                    src="/logo-geopol.png" 
+                    alt="GeoPol Logo" 
+                    className="w-7 h-7 rounded-sm"
+                  />
                   <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
                 </div>
-                <h1 className={`text-xl font-black italic tracking-tighter leading-none text-white`}>
-                  GEO<span className={theme.accent}>POL</span>
-                </h1>
+                <div className="flex flex-col items-start">
+                  <h1 className={`text-2xl font-black italic tracking-tighter leading-none text-white`}>
+                    GEO<span className={theme.accent}>POL</span>
+                  </h1>
+                  <span className={`text-[0.45rem] font-bold tracking-[0.25em] uppercase ${theme.text} opacity-60 whitespace-nowrap`}>
+                    Intelligence Terminal
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -284,8 +293,12 @@ function DashboardContent() {
 
           {/* Desktop Left Side: Logo, Search, Categories */}
           <div className="hidden lg:flex items-center gap-4 group flex-1">
-            <div className="relative shrink-0 hidden sm:block">
-              <Radar className={`w-8 h-8 ${theme.accent} ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+            <div className="relative shrink-0">
+              <img 
+                src="/logo-geopol.png" 
+                alt="GeoPol Logo" 
+                className={`w-9 h-9 rounded-sm ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`}
+              />
               <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
             </div>
             <div className="flex flex-col shrink-0 mr-4">
