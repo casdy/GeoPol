@@ -61,14 +61,14 @@ const REGION_BOUNDS: Record<string, { center: [number, number]; zoom: number }> 
   'Asia':           { center: [105, 35],   zoom: 3 },
 };
 
-function buildMapStyle(apiKey: string): maplibregl.StyleSpecification {
+function buildMapStyle(): maplibregl.StyleSpecification {
   return {
     version: 8,
     glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
     sources: {
       protomaps: {
         type: 'vector',
-        url: `https://api.protomaps.com/tiles/v4.json?key=${apiKey}`,
+        url: `/api/proxy/tiles/v4.json`,
         attribution: '© Protomaps',
       },
     },
@@ -403,14 +403,13 @@ export default function StrategicTheaterMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const apiKey = process.env.NEXT_PUBLIC_PROTOMAPS_KEY || '';
     if (!protocolRef.current) {
       protocolRef.current = new Protocol();
       maplibregl.addProtocol('pmtiles', protocolRef.current.tile);
     }
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildMapStyle(apiKey),
+      style: buildMapStyle(),
       center: REGION_BOUNDS[selectedRegion]?.center || [20, 20],
       zoom: REGION_BOUNDS[selectedRegion]?.zoom || 1.8,
       minZoom: 1.5, maxZoom: 12, attributionControl: false,

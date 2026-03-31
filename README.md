@@ -62,7 +62,20 @@ OPENROUTER_API_KEY=your_key
 ```
 
 ### Strategic Cron Jobs
-The Fusion Engine runs at `00:00`, `08:00`, and `16:00` UTC to refresh the tactical global state without exceeding rate limits. These can be triggered via `/api/fusion` if authorized.
+The Fusion Engine runs at `00:00` UTC daily (complying with Vercel Hobby limits) to refresh the tactical global state. These can be triggered manually via `/api/cron/fusion`.
+
+## 🛡 Security & Intelligence (Tile Proxy)
+
+The dashboard uses a custom **Tile Proxy** architecture to secure sensitive geopolitical data and map assets.
+
+### Secure Variables (`.env`)
+Ensure these are set in your Vercel Dashboard:
+- `PROTOMAPS_API_KEY`: Your secret Protomaps key (non-public).
+- `NEXT_PUBLIC_APP_URL`: Your deployment URL (e.g., `https://geopol-pulse.vercel.app`).
+
+### Why this is Secure:
+- **Zero Exposed Keys**: The browser never sees your Protomaps key. All requests for vector tiles are proxied through server-side routes.
+- **Domain Restriction**: Added another layer of protection by routing all tactical assets through internal API proxies.
 
 ## 🧪 Intelligence Verification (Testing)
 
