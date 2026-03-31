@@ -72,8 +72,13 @@ export function groupByRegion(feeds: UnifiedFeed[]): Record<string, UnifiedFeed[
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverrideClick?: () => void }) {
+  const [mounted, setMounted] = useState(false);
   const [activeChannel, setActiveChannel] = useState<UnifiedFeed>(SURVEILLANCE_FEEDS[0]);
   const [secondaryChannel, setSecondaryChannel] = useState<UnifiedFeed>(SURVEILLANCE_FEEDS[1] || SURVEILLANCE_FEEDS[0]);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Fallback to news if no webcams are available in the registry
   const initialSurveillance = useMemo(() => {
@@ -106,6 +111,17 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
   const promoteToPrimary = (ch: UnifiedFeed) => {
     setActiveChannel(ch);
   };
+
+  // ── HYDRATION FALLBACK ─────────────────────────────────────────────────────
+  if (!mounted) {
+    return (
+      <div className="w-full h-[600px] bg-slate-950/90 border border-slate-800 rounded-sm animate-pulse flex items-center justify-center">
+         <span className="text-[10px] font-mono tracking-[0.5em] text-slate-800 uppercase">
+           Synchronizing Signal...
+         </span>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col bg-slate-950/90 border border-slate-800 rounded-sm backdrop-blur-md shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
