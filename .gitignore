@@ -75,3 +75,11 @@ yarn-error.log*
 *.scratch.ts
 found_live_ids.json
 new_channels_validated.json
+build_output*.txt
+test_results.txt
+daily_updates_*.md
+src_files.txt
+tests/*.json
+tests/*.txt
+tests/*.log
+

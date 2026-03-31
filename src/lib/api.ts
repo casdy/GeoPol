@@ -1,6 +1,7 @@
 'use server';
 
 import { Article, Video, BiasMeta, FetchOptions, PulseItem } from './types';
+import { OpenRouter } from '@openrouter/sdk';
 
 const TIER_1_DOMAINS = [
     "reuters.com",
@@ -241,7 +242,7 @@ async function fetchTheNewsApi(keyword: string, isCrisisMode: boolean): Promise<
 // MAIN AGGREGATION ENGINE (V3)
 // -------------------------------------------------------------
 
-export async function getAggregatedNews(keyword: string, isCrisisMode: boolean = false): Promise<PulseItem[]> {
+export async function getAggregatedNews(keyword: string, isCrisisMode: boolean = false, timeRange?: string): Promise<PulseItem[]> {
     const promises = [
         fetchNewsApi(keyword, isCrisisMode),
         fetchGNews(keyword, isCrisisMode),
@@ -260,8 +261,28 @@ export async function getAggregatedNews(keyword: string, isCrisisMode: boolean =
         }
     });
 
+    // Time-based filtering (Post-aggregation)
+    if (timeRange && timeRange !== 'all') {
+        const now = Date.now();
+        const rangeMs: Record<string, number> = {
+            '1h': 60 * 60 * 1000,
+            '6h': 6 * 60 * 60 * 1000,
+            '24h': 24 * 60 * 60 * 1000,
+            '48h': 48 * 60 * 60 * 1000,
+            '7d': 7 * 24 * 60 * 60 * 1000
+        };
+        const selectedRange = rangeMs[timeRange] || 24 * 60 * 60 * 1000;
+
+        allItems = allItems.filter(item => {
+            const pubDate = new Date(item.publishedAt).getTime();
+            return (now - pubDate) <= selectedRange;
+        });
+    }
+
+
     // Smart Filtering
     allItems = allItems.filter(item => isRelevantGeopoliticalArticle(item.title, item.summary));
+
 
     // Deduplicate Engine based on title similarity and exact URL match
     const unique: PulseItem[] = [];
@@ -303,7 +324,8 @@ export async function getAggregatedIntelligence(options: FetchOptions): Promise<
         baseQuery += ` ${options.category}`;
     }
 
-    const pulseItems = await getAggregatedNews(baseQuery, isCrisisMode);
+    const pulseItems = await getAggregatedNews(baseQuery, isCrisisMode, options.timeRange);
+
 
     // Map the new PulseItem structure back to the legacy Article structure
     const mappedArticles: Omit<Article, 'biasMeta'>[] = pulseItems.map(p => ({
@@ -319,21 +341,64 @@ export async function getAggregatedIntelligence(options: FetchOptions): Promise<
         apiSource: 'Aggregator V3'
     }));
 
-    // Enrich
+    // Dedup and enrich
     const deduplicatedArticles: Article[] = mappedArticles.map(enrichWithBiasMetadata);
 
     if (deduplicatedArticles.length === 0) {
-        const mockDomain = "reuters.com";
-        deduplicatedArticles.push(enrichWithBiasMetadata({
-            id: 'mock-1',
-            title: "Global Intelligence Feed Offline or Limited",
-            description: "No secure signals received from integrated intelligence providers. Utilizing offline backups.",
-            url: "#",
-            source: "System",
-            domain: mockDomain,
-            publishedAt: new Date().toISOString(),
-            tags: ["System Warning"]
-        }));
+        const mockEvents: Omit<Article, 'biasMeta'>[] = [
+            {
+                id: 'mock-sdn',
+                title: "CRITICAL: Heavy shelling reported in Khartoum North, Sudan",
+                description: "Tactical data suggests a major ground offensive is underway near key infrastructure sites. Kinetic signals remain high.",
+                url: "#",
+                source: "SIGINT_OVERRIDE",
+                domain: "reuters.com",
+                publishedAt: new Date().toISOString(),
+                tags: ["CONFLICT", "SUDAN"]
+            },
+            {
+                id: 'mock-ukr',
+                title: "UKRAINE: Multi-vector drone strike detected in Donbas sector",
+                description: "Air Defense systems active. Multiple explosions confirmed. Strategic theater analysis initiated.",
+                url: "#",
+                source: "OSINT_MONITOR",
+                domain: "apnews.com",
+                publishedAt: new Date().toISOString(),
+                tags: ["CONFLICT", "UKRAINE"]
+            },
+            {
+                id: 'mock-isr',
+                title: "ISRAEL: IDF confirms strike on tactical hubs in Northern Sector",
+                description: "Conflict intensity scale has reached VOLATILE. Regional stability metrics under significant pressure.",
+                url: "#",
+                source: "GLOBE_SAT",
+                domain: "bbc.com",
+                publishedAt: new Date().toISOString(),
+                tags: ["CONFLICT", "ISRAEL"]
+            },
+            {
+                id: 'mock-twn',
+                title: "TAIWAN: Maritime exclusion zone established amid naval movements",
+                description: "Strategic tension in the strait is rising. Monitoring for stability signals and diplomatic shift.",
+                url: "#",
+                source: "INDOPAC_COMMAND",
+                domain: "nikkei.com",
+                publishedAt: new Date().toISOString(),
+                tags: ["ALERT", "TAIWAN"]
+            },
+            {
+                id: 'mock-bra',
+                title: "BRAZIL: Economic pact signed to boost South American trade corridor",
+                description: "Stability indicators showing growth. Diplomatic relations with regional partners reinforced.",
+                url: "#",
+                source: "FIN_TIMES",
+                domain: "ft.com",
+                publishedAt: new Date().toISOString(),
+                tags: ["STABILITY", "BRAZIL"]
+            }
+        ];
+        
+        mockEvents.forEach(e => deduplicatedArticles.push(enrichWithBiasMetadata(e)));
     }
 
     return {

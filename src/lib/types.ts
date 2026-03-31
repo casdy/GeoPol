@@ -60,4 +60,6 @@ export interface FetchOptions {
   isCrisisMode?: boolean;
   page?: number;
   category?: string;
+  timeRange?: '1h' | '6h' | '24h' | '48h' | '7d' | 'all';
 }
+

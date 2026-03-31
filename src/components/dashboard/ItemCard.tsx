@@ -4,7 +4,7 @@ import { ExternalLink, PlayCircle, Clock, Share2 } from 'lucide-react';
 interface ItemCardProps {
     item: Article;
     onPlay?: (item: Article) => void; 
-    variant?: 'default' | 'hero' | 'compact' | 'text-only';
+    variant?: 'default' | 'hero' | 'compact' | 'text-only' | 'tactical' | 'tactical-image';
     hideTitle?: boolean;
 }
 
@@ -29,17 +29,71 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
         default: 'h-44',
         hero: 'flex-1 min-h-0',
         compact: 'h-32',
-        'text-only': 'hidden'
+        'text-only': 'hidden',
+        'tactical': 'hidden',
+        'tactical-image': 'w-24 h-24 shrink-0'
     };
     
     const titleSizes = {
-        default: 'text-lg md:text-sm mb-3', // 18px on mobile
-        hero: 'text-3xl md:text-3xl lg:text-4xl mb-4 leading-tight', // 30px on mobile
-        compact: 'text-base md:text-xs mb-2 leading-tight', // 16px on mobile
-        'text-only': 'text-lg md:text-sm mb-2 font-bold hover:underline underline-offset-4' // 18px on mobile
+        default: 'text-[20px] md:text-[24px] font-semibold mb-3 leading-tight',
+        hero: 'text-[28px] md:text-[32px] font-bold mb-4 leading-tight',
+        compact: 'text-base md:text-lg font-semibold mb-2 leading-tight',
+        'text-only': 'text-[20px] md:text-[24px] font-bold mb-2 hover:underline underline-offset-4 leading-tight',
+        'tactical': 'text-sm md:text-base font-semibold mb-1 leading-snug',
+        'tactical-image': 'text-[13px] md:text-[14px] font-semibold leading-snug line-clamp-2'
     };
 
     const isTextOnly = variant === 'text-only';
+    const isTactical = variant === 'tactical' || variant === 'tactical-image';
+    const showTacticalImage = variant === 'tactical-image';
+
+    if (isTactical) {
+      return (
+        <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleClick}
+            className="group flex items-start gap-3 px-3 py-2.5 border-b border-neutral-800/40 hover:bg-neutral-800/30 transition-all duration-200 cursor-pointer overflow-hidden"
+        >
+            {showTacticalImage && (
+                <div className="w-24 h-24 shrink-0 bg-neutral-950 border border-neutral-800/50 overflow-hidden rounded-sm relative">
+                    {item.image ? (
+                        <img 
+                            src={`/api/proxy/image?url=${encodeURIComponent(item.image)}`} 
+                            alt="" 
+                            loading="lazy"
+                            className="w-full h-full object-cover grayscale opacity-70 group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-500"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[8px] text-neutral-800 font-sans text-center px-1 uppercase leading-tight">
+                            Sig Lost
+                        </div>
+                    )}
+                    <div className="absolute top-0 right-0 px-1 bg-neutral-950/80 text-[7px] text-orange-500/80 font-sans border-l border-b border-neutral-800/50">
+                        {item.source.substring(0, 3)}
+                    </div>
+                </div>
+            )}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-orange-500 font-sans shrink-0">{item.source}</span>
+                    {item.tags?.slice(0, 1).map((tag) => (
+                        <span key={tag} className="text-[9px] uppercase tracking-wider px-1 py-0.5 border border-neutral-700/50 text-neutral-500 font-sans">{tag}</span>
+                    ))}
+                </div>
+                <h3 className={`text-neutral-200 group-hover:text-amber-500 transition-colors ${titleSizes[variant]}`}>
+                    {item.title}
+                </h3>
+                <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
+                    <Clock className="w-2.5 h-2.5 text-neutral-700 shrink-0" />
+                    <span className="text-[10px] text-neutral-600 font-sans tracking-wide truncate">{formatDate(item.publishedAt)}</span>
+                </div>
+            </div>
+            <ExternalLink className="w-3 h-3 text-neutral-700 group-hover:text-orange-500 transition-colors mt-1 shrink-0" />
+        </a>
+      );
+    }
 
     return (
         <a
@@ -64,12 +118,13 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
                 <div className={`relative w-full overflow-hidden bg-neutral-950 group-hover:border-b border-orange-500/20 transition-colors ${imageHeights[variant as keyof typeof imageHeights]}`}>
                     {item.image ? (
                         <img
-                            src={item.image}
+                            src={`/api/proxy/image?url=${encodeURIComponent(item.image)}`}
                             alt={item.title}
+                            loading="lazy"
                             className={`w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 grayscale group-hover:grayscale-0 group-hover:scale-105 ${variant==='compact'?'object-top':''}`}
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-neutral-800 font-mono text-xs uppercase bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-900 to-neutral-950">
+                        <div className="w-full h-full flex items-center justify-center text-neutral-800 font-sans text-xs uppercase bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-900 to-neutral-950">
                             Signal Lost
                         </div>
                     )}
@@ -110,21 +165,21 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
 
                 {!hideTitle && (
                     <div className="flex flex-col flex-grow">
-                        <h3 className={`text-neutral-200 font-bold group-hover:text-amber-500 transition-colors font-mono ${titleSizes[variant as keyof typeof titleSizes]}`}>
+                        <h3 className={`text-neutral-200 group-hover:text-amber-500 transition-colors font-sans ${titleSizes[variant as keyof typeof titleSizes]}`}>
                             {item.title}
                         </h3>
                         {!isTextOnly && item.description && (
                             <div className="mt-1 mb-4 border-l-2 border-orange-500/30 pl-3">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-orange-500/80 mb-1 block">Intelligence Briefing</span>
-                                <p className="text-xs text-neutral-400 font-sans line-clamp-2 leading-relaxed">
-                                    {item.description}
+                                <p className="text-xs text-neutral-400 font-sans line-clamp-2 leading-relaxed italic">
+                                    {item.summary || item.description}
                                 </p>
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className={`flex items-center justify-between text-[10px] text-neutral-600 font-mono mt-auto ${!isTextOnly ? 'pt-3 border-t border-neutral-800' : 'pt-2'}`}>
+                <div className={`flex items-center justify-between text-[11px] md:text-[12px] text-neutral-600 font-sans mt-auto ${!isTextOnly ? 'pt-3 border-t border-neutral-800' : 'pt-2'}`}>
                     <div className="flex items-center gap-1.5">
                         <Clock className="w-3 h-3 text-neutral-700" />
                         <span>{formatDate(item.publishedAt)}</span>

@@ -2,16 +2,16 @@
 
 import { motion } from 'framer-motion';
 
-const CATEGORIES = ['general', 'world', 'business', 'technology', 'entertainment', 'science', 'health'];
+const CATEGORIES = ['general', 'world', 'surveillance', 'business', 'technology', 'entertainment', 'science', 'health'];
 
 export default function CategoryNav({ selectedCategory, onSelectCategory }: { selectedCategory: string, onSelectCategory: (c: string) => void }) {
   return (
-    <nav className="hidden lg:flex items-center gap-4 xl:gap-8 overflow-hidden">
+    <nav className="hidden xl:flex items-center gap-4 xl:gap-8 overflow-hidden">
       {CATEGORIES.map((cat) => (
         <button
           key={cat}
           onClick={() => onSelectCategory(cat)}
-          className={`relative text-[10px] font-bold uppercase tracking-widest px-1 py-4 transition-colors ${
+          className={`relative text-[14px] font-medium uppercase tracking-widest px-1 py-4 transition-colors ${
             selectedCategory === cat ? 'text-orange-500' : 'text-neutral-400 hover:text-white'
           }`}
         >

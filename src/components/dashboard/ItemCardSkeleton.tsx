@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 
 interface ItemCardSkeletonProps {
-    variant?: 'default' | 'hero' | 'compact' | 'text-only';
+    variant?: 'default' | 'hero' | 'compact' | 'text-only' | 'tactical-image';
     hideTitle?: boolean;
 }
 
@@ -14,12 +14,13 @@ export function ItemCardSkeleton({ variant = 'default', hideTitle = false }: Ite
         default: 'h-44',
         hero: 'h-64 md:h-80 lg:h-[400px]',
         compact: 'h-32',
-        'text-only': 'hidden'
+        'text-only': 'hidden',
+        'tactical-image': 'h-24'
     };
 
     return (
         <div 
-            className={`relative ${!isTextOnly ? 'bg-neutral-900/50 border border-neutral-800 rounded-md' : 'bg-transparent border-b border-neutral-800/50 pb-3'} overflow-hidden h-full flex flex-col`}
+            className={`relative ${variant !== 'text-only' && variant !== 'tactical-image' ? 'bg-neutral-900/50 border border-neutral-800 rounded-md' : 'bg-transparent border-b border-neutral-800/50 pb-3'} overflow-hidden h-full flex flex-col`}
         >
             {/* Shimmer Effect */}
             <motion.div
@@ -34,7 +35,16 @@ export function ItemCardSkeleton({ variant = 'default', hideTitle = false }: Ite
             />
 
             {/* Image Skeleton */}
-            {!isTextOnly && (
+            {(variant === 'tactical-image') ? (
+                <div className="flex items-start gap-3 p-3">
+                    <div className="w-24 h-24 shrink-0 bg-neutral-900/80 animate-pulse rounded-sm" />
+                    <div className="flex-1 space-y-3 pt-1">
+                        <div className="h-2 w-16 bg-orange-950/20 rounded animate-pulse" />
+                        <div className="h-4 w-full bg-neutral-800 rounded animate-pulse" />
+                        <div className="h-2 w-24 bg-neutral-800 rounded animate-pulse mt-4" />
+                    </div>
+                </div>
+            ) : !isTextOnly && (
                 <div className={`relative w-full overflow-hidden bg-neutral-950/50 ${imageHeights[variant]}`}>
                     <div className="w-full h-full bg-neutral-900/50 animate-pulse" />
                     

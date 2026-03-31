@@ -1,11 +1,24 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Article, Region } from '@/lib/types';
 import { getAggregatedIntelligence } from '@/lib/api';
-import WorldMap from '@/components/dashboard/WorldMap';
+import dynamic from 'next/dynamic';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
+
+// ─── DYNAMIC IMPORTS (BUFFER ENGINE) ──────────────────────────────────────────
+const StrategicTheaterMap = dynamic(() => import('@/components/dashboard/StrategicTheaterMap'), { 
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full animate-pulse bg-slate-900 flex items-center justify-center font-mono text-cyan-500 border border-cyan-900/40">
+      <Radar className="w-8 h-8 mr-4 animate-spin" />
+      INITIALIZING SATELLITE LINK...
+    </div>
+  )
+});
+
 import LiveWire from '@/components/dashboard/LiveWire';
 import { ItemCard } from '@/components/dashboard/ItemCard';
 import { ItemCardSkeleton } from '@/components/dashboard/ItemCardSkeleton';
@@ -13,55 +26,126 @@ import NewsModal from '@/components/dashboard/NewsModal';
 import CrisisToggle from '@/components/dashboard/CrisisToggle';
 import HamburgerMenu from '@/components/dashboard/HamburgerMenu';
 import CategoryNav from '@/components/dashboard/CategoryNav';
+import { processGoodNews } from '@/lib/goodNewsEngine';
 import LiveNewsViewer from '@/components/dashboard/LiveNewsViewer';
-import WeatherWidget from '@/components/dashboard/WeatherWidget';
-import PodcastPlayer from '@/components/shared/PodcastPlayer';
+import AviationStatusCard from '@/components/dashboard/AviationStatusCard';
+import WeatherInsightsSlideshow from '@/components/dashboard/WeatherInsightsSlideshow';
 import PaywallModal from '@/components/dashboard/PaywallModal';
-import { MobileLayout, TabletLayout, DesktopLayout } from '@/components/layout/DeviceLayouts';
+import CommandCenterLayout from '@/components/layout/CommandCenterLayout';
 import Footer from '@/components/layout/Footer';
-import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
-import { Loader2, Search, Radar, Zap, Globe, Menu, ChevronDown, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import AdminCamModal from '@/components/dashboard/AdminCamModal';
+import { useWebcams } from '@/hooks/useWebcams';
+import { Search, Radar, Globe, Clock, Zap, Plus, Activity } from 'lucide-react';
+import GlobalCamGrid from '@/components/dashboard/GlobalCamGrid';
+import AIInsightsBrief from '@/components/dashboard/AIInsightsBrief';
+import StrategicRiskGauge from '@/components/dashboard/StrategicRiskGauge';
+import StrategicPosture from '@/components/dashboard/StrategicPosture';
+import AIForecasts from '@/components/dashboard/AIForecasts';
+import CountryInstability from '@/components/dashboard/CountryInstability';
+import CyberThreatRadar from '@/components/dashboard/CyberThreatRadar';
+import IntelFeed from '@/components/dashboard/IntelFeed';
+import LiveInsightModal from '@/components/dashboard/LiveInsightModal';
+import { getGeopoliticalIntelligence, CountryIntelligence } from '@/lib/intelligence-engine';
+
+const TacticalWidgetSkeleton = () => (
+  <div className="h-32 bg-neutral-900/40 border border-neutral-800/50 rounded-sm animate-pulse" />
+);
 
 function DashboardContent() {
   const searchParams = useSearchParams();
 
-  const [region, setRegion] = useState<Region>('Global');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [region, setRegion] = useState<Region>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('geopol-region');
+      return (saved as Region) || 'Global';
+    }
+    return 'Global';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('geopol-region', region);
+  }, [region]);
+  const [newsQuery, setNewsQuery] = useState('');
   const [isCrisisMode, setIsCrisisMode] = useState(false);
+  const [isGoodNewsMode, setIsGoodNewsMode] = useState(false);
+  const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '48h' | '7d' | 'all'>('all');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  const [isActiveLiveInsight, setIsActiveLiveInsight] = useState(false);
   const [category, setCategory] = useState('general');
   const [isPremium, setIsPremium] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
-
-  // Debounce search query to prevent excessive API calls
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
+  const [selectedCountryIntel, setSelectedCountryIntel] = useState<CountryIntelligence | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const { addCam } = useWebcams();
 
   // Unified Intelligence Feed
   const { data: intelligenceData, isLoading } = useQuery({
-    queryKey: ['intelligenceFeed', region, debouncedSearchQuery, isCrisisMode, category],
-    queryFn: () => getAggregatedIntelligence({ region, query: debouncedSearchQuery, isCrisisMode, category }),
-    // Pause all background refreshes while the user is reading an article — prevents
-    // the deep-link modal from re-opening or flickering after the user closes it.
+    queryKey: ['intelligenceFeed', region, newsQuery, isCrisisMode, category, timeRange],
+    queryFn: () => getAggregatedIntelligence({ region, query: newsQuery, isCrisisMode, category, timeRange }),
+    // Pause all background refreshes while the user is reading an article
     refetchInterval: activeArticle ? false : (isCrisisMode ? 15000 : 60000),
     refetchOnWindowFocus: !activeArticle,
   });
 
-  const allArticles = intelligenceData?.news || [];
-  const mainStories = allArticles.slice(0, 36);
-  const sidebarStories = allArticles.slice(36, 72);
-  const liveWireItems = allArticles.slice(0, 20);
-  const isGNewsLoading = isLoading;
+  const [tacticalData, setTacticalData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchTacticalGrid = async () => {
+      try {
+        const res = await fetch('/api/tactical-grid');
+        const data = await res.json();
+        if (!data.error && data.intelFeed) {
+          const seen = new Set();
+          data.intelFeed = data.intelFeed.filter((item: any) => {
+            const txt = (item.text || item.title || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
+            if (seen.has(txt)) return false;
+            seen.add(txt);
+            return true;
+          });
+          setTacticalData(data);
+        }
+      } catch (e) {
+        console.error('Tactical Grid Fetch Error:', e);
+      }
+    };
+    
+    fetchTacticalGrid();
+    const interval = setInterval(fetchTacticalGrid, 15 * 60 * 1000); // 15 mins
+    return () => clearInterval(interval);
+  }, []);
+
+  const rawArticles = intelligenceData?.news || [];
+  const seenTitles = new Set<string>();
+  const allArticles = rawArticles.filter(a => {
+    // Aggressive normalization: lowercase, remove special characters, trim
+    const normalizedTitle = (a.title || '')
+      .toLowerCase()
+      .replace(/[^\w\s]/gi, '')
+      .trim();
+    
+    // Also check for very similar prefixes (first 50 chars) to catch minor trailing changes
+    const titlePrefix = normalizedTitle.substring(0, 50);
+    
+    if (seenTitles.has(normalizedTitle) || (normalizedTitle.length > 50 && seenTitles.has(titlePrefix))) {
+      return false;
+    }
+    
+    seenTitles.add(normalizedTitle);
+    if (normalizedTitle.length > 50) seenTitles.add(titlePrefix);
+    
+    return true;
+  });
+
+  const finalArticles = isGoodNewsMode ? processGoodNews(allArticles) : allArticles;
+
+  const strategicArticles = finalArticles.slice(0, 40);
+  const liveIntelArticles = finalArticles.slice(40);
+  const liveWireItems = finalArticles.slice(0, 20);
 
   // ─── Event-Driven Deep Link Intelligence Matcher ───────────────────────────
   useEffect(() => {
-    // Only proceed once if we haven't already hydrated the modal
     if (activeArticle) return; 
 
     const rawUrl   = searchParams.get('articleUrl');
@@ -72,23 +156,19 @@ function DashboardContent() {
     const url   = rawUrl ? decodeURIComponent(rawUrl) : '';
     const title = rawTitle ? decodeURIComponent(rawTitle) : '';
 
-    // Step 1: Wait for live feed to populate before attempting a match
     const liveFeedLoaded = allArticles && allArticles.length > 0;
     
-    // Step 2: Fuzzy Text Matching Algorithm
     const findLiveMatch = (): Article | undefined => {
       if (!liveFeedLoaded) return undefined;
       
-      // Strict URL Match (fastest, most reliable)
       if (url) {
         const strictMatch = allArticles.find(a => a.url === url);
         if (strictMatch) return strictMatch;
       }
 
-      // Fuzzy Title Match (handles slight API string variations)
       if (title) {
         const normalize = (str: string) => str.toLowerCase().replace(/[^\w\s]/gi, '');
-        const targetWords = normalize(title).split(/\s+/).filter(w => w.length > 3); // Ignore small words
+        const targetWords = normalize(title).split(/\s+/).filter(w => w.length > 3);
         
         if (targetWords.length === 0) return undefined;
 
@@ -100,10 +180,9 @@ function DashboardContent() {
             if (candidateWords.includes(w)) matchCount++;
           });
 
-          // 80% keyword overlap threshold
           const overlapPercentage = (matchCount / targetWords.length) * 100;
           if (overlapPercentage >= 80) {
-            return candidate; // Found a high-confidence match!
+            return candidate;
           }
         }
       }
@@ -113,11 +192,8 @@ function DashboardContent() {
     const liveMatch = findLiveMatch();
 
     if (liveMatch) {
-      // 🎯 SUCCESS: Found the rich live data item in the feed!
       setActiveArticle(liveMatch);
     } else if (liveFeedLoaded || isLoading === false) {
-      // 🌫️ MISS: The API finished loading, but the article rotated out of the feed.
-      // Generate the synthetic phantom fallback from the URL parameters.
       const rawSrc  = searchParams.get('articleSource');
       const rawDesc = searchParams.get('articleDescription');
       
@@ -145,17 +221,32 @@ function DashboardContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allArticles, isLoading]);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFooterVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+
   // FLASHPOINT THEME ENGINE
   const theme = isCrisisMode
     ? {
-      // CRISIS: High Alert / Red / Kinetic
       bg: 'bg-red-950',
       text: 'text-red-50',
       accent: 'text-red-500',
       border: 'border-red-600',
       cardBg: 'bg-red-900/10',
       cardBorder: 'border-red-600/50',
-      headerBg: 'bg-red-950', // Solid Red-950
+      headerBg: 'bg-red-950',
       pulseColor: 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]',
       selection: 'selection:bg-red-600 selection:text-white',
       inputBg: 'bg-red-900/20',
@@ -163,14 +254,13 @@ function DashboardContent() {
       indicator: 'bg-red-500'
     }
     : {
-      // DORMANT: Surveillance / Neutral / Orange / Amber
       bg: 'bg-neutral-950',
       text: 'text-neutral-200',
       accent: 'text-orange-500',
       border: 'border-neutral-800',
       cardBg: 'bg-neutral-900/40',
       cardBorder: 'border-neutral-800 hover:border-orange-500/50',
-      headerBg: 'bg-black', // Solid Black
+      headerBg: 'bg-black',
       pulseColor: 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]',
       selection: 'selection:bg-orange-500/30 selection:text-orange-100',
       inputBg: 'bg-neutral-900',
@@ -178,117 +268,70 @@ function DashboardContent() {
       indicator: 'bg-orange-500'
     };
 
-  const renderHeadlines = () => (
-    <>
-      <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
-        <Globe className="w-4 h-4 text-orange-500" />
-        Headlines
-      </h2>
-
-      {isLoading ? (
-        <DashboardSkeleton />
-      ) : (
-        <>
-          <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-            <AnimatePresence mode='popLayout'>
-              {mainStories.map((article, i) => (
-                <motion.div
-                  key={article.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <ItemCard item={article} onPlay={(item) => setActiveArticle(item)} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          {mainStories.length === 0 && <p className="text-neutral-500 text-center py-10 font-mono text-xs uppercase">No intelligence reports found.</p>}
-        </>
-      )}
-    </>
-  );
-
-  const renderGroundNews = () => (
-    <div className="sticky top-24 space-y-6">
-      <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 flex items-center gap-2 font-mono`}>
-        <Zap className="w-4 h-4 text-orange-500" />
-        GROUND NEWS
-      </h2>
-
-      <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-        {isGNewsLoading ? (
-          <>
-            {[1, 2, 3, 4].map(i => <ItemCardSkeleton key={i} variant="compact" />)}
-          </>
-        ) : (
-          <AnimatePresence mode='popLayout'>
-            {sidebarStories.map((item, i) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.05 }}
-              >
-                <ItemCard item={item} onPlay={(i) => setActiveArticle(i)} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-        {sidebarStories.length === 0 && !isGNewsLoading && <p className="col-span-2 text-neutral-600 text-center text-[10px] font-mono uppercase tracking-widest pt-4">No additional feed data.</p>}
-      </div>
-    </div>
-  );
+  // ─── Compute header height for layout offset ────────────────────────
+  // Header is h-16 (4rem) + LiveWire bar (~28px) = ~92px
+  const headerOffset = '92px';
 
   return (
-    <div className="max-w-[100vw] overflow-x-hidden lg:max-w-none lg:overflow-x-visible">
-      <main className={`min-h-screen lg:min-w-[1280px] ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans pb-20`}>
+    <div className="max-w-[100vw] overflow-x-hidden xl:max-w-none xl:overflow-x-visible">
+      <main className={`min-h-screen ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans overflow-x-hidden`}>
 
-      <NewsModal article={activeArticle} onClose={() => setActiveArticle(null)} />
+      <NewsModal 
+        article={activeArticle} 
+        onClose={() => setActiveArticle(null)} 
+        isLiveInsight={isActiveLiveInsight}
+      />
 
       {/* Header */}
-      <header className={`border-b ${theme.border} ${theme.headerBg} sticky top-0 z-50 transition-colors duration-700 lg:min-w-[1280px]`}>
-        <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-44 max-w-[2000px] h-16 flex items-center justify-between relative">
+      <header className={`border-b ${theme.border} ${theme.headerBg} sticky top-0 z-50 transition-colors duration-700`}>
+        <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 h-16 flex items-center justify-between relative">
           
-          {/* Mobile Center Header Layout */}
-          <div className="lg:hidden flex items-center justify-between w-full h-full">
-            <div className="flex-1 flex justify-start">
+          {/* Mobile Header Layout (0px to 1280px) */}
+          <div className="xl:hidden grid grid-cols-3 items-center w-full h-full relative">
+            {/* Left: Hamburger */}
+            <div className="flex justify-start">
                <HamburgerMenu
-                  categories={['general', 'world', 'nation', 'business', 'technology', 'entertainment', 'sports', 'science', 'health']}
+                  categories={['general', 'world', 'surveillance', 'nation', 'business', 'technology', 'entertainment', 'sports', 'science', 'health']}
                   selectedCategory={category}
                   onSelectCategory={setCategory}
                />
             </div>
 
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-2">
+            {/* Center: Logo */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <div className="relative shrink-0">
-                  <Radar className={`w-6 h-6 ${theme.accent} ${isCrisisMode ? 'animate-spin' : ''}`} />
+                  <Radar className={`w-5 h-5 sm:w-6 sm:h-6 ${theme.accent} ${isCrisisMode ? 'animate-spin' : ''}`} />
                   <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
                 </div>
-                <div className="flex flex-col items-start">
-                  <h1 className={`text-2xl font-black italic tracking-tighter leading-none text-white`}>
-                    GEO<span className={theme.accent}>POL</span>
-                  </h1>
-                  <span className={`text-[0.45rem] font-bold tracking-[0.25em] uppercase ${theme.text} opacity-60 whitespace-nowrap`}>
-                    Intelligence Terminal
-                  </span>
-                </div>
+                <h1 className={`text-xl sm:text-2xl font-black italic tracking-tighter leading-none text-white`}>
+                  GEO<span className={theme.accent}>POL</span>
+                </h1>
               </div>
             </div>
 
-            <div className="flex-1 flex justify-end items-center gap-1">
-               <WeatherWidget />
-               <CrisisToggle
-                 isActive={isCrisisMode}
-                 onToggle={() => setIsCrisisMode(!isCrisisMode)}
-               />
+            {/* Right: Controls */}
+            <div className="flex justify-end items-center gap-1 sm:gap-2">
+               <div className="hidden xs:block">
+                  <WeatherInsightsSlideshow />
+               </div>
+               <CrisisToggle 
+                isCrisis={isCrisisMode} 
+                isGoodNews={isGoodNewsMode}
+                onCrisisToggle={() => {
+                  setIsCrisisMode(!isCrisisMode);
+                  if (!isCrisisMode) setIsGoodNewsMode(false);
+                }}
+                onGoodNewsToggle={() => {
+                  setIsGoodNewsMode(!isGoodNewsMode);
+                  if (!isGoodNewsMode) setIsCrisisMode(false);
+                }}
+              />
             </div>
           </div>
 
-          {/* Desktop Left Side: Logo, Search, Categories */}
-          <div className="hidden lg:flex items-center gap-4 group flex-1">
+          {/* Desktop Left Side: Logo, Search, Categories (Only on 1280px+) */}
+          <div className="hidden xl:flex items-center gap-4 group flex-1">
             <div className="relative shrink-0">
               <Radar className={`w-8 h-8 ${theme.accent} ${isCrisisMode ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
               <div className={`absolute inset-0 ${theme.pulseColor} rounded-full opacity-20 animate-ping`} />
@@ -311,7 +354,7 @@ function DashboardContent() {
                   suppressHydrationWarning={true}
                   placeholder="SEARCH DATABASE..."
                   className={`w-full ${theme.inputBg} border border-neutral-800 rounded-sm py-1.5 pl-10 pr-4 text-sm font-mono uppercase tracking-wide ${theme.inputText} focus:outline-none focus:border-orange-600 focus:ring-1 focus:ring-orange-600/20 transition-all placeholder:text-neutral-700`}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => setNewsQuery(e.target.value)} // Updated to setNewsQuery
                 />
               </div>
             )}
@@ -320,314 +363,212 @@ function DashboardContent() {
           </div>
 
           {/* Desktop Right Side: Weather & Crisis Toggle */}
-          <div className="hidden lg:flex items-center justify-end gap-2 md:gap-4 shrink-0">
-            <WeatherWidget />
+          <div className="hidden xl:flex items-center justify-end gap-2 md:gap-4 shrink-0">
+            <WeatherInsightsSlideshow />
 
-            <CrisisToggle
-              isActive={isCrisisMode}
-              onToggle={() => setIsCrisisMode(!isCrisisMode)}
+            <CrisisToggle 
+                isCrisis={isCrisisMode} 
+                isGoodNews={isGoodNewsMode}
+                onCrisisToggle={() => {
+                  setIsCrisisMode(!isCrisisMode);
+                  if (!isCrisisMode) setIsGoodNewsMode(false);
+                }}
+                onGoodNewsToggle={() => {
+                  setIsGoodNewsMode(!isGoodNewsMode);
+                  if (!isGoodNewsMode) setIsCrisisMode(false);
+                }}
             />
           </div>
         </div>
 
-        {/* Reuse LiveWire - logic can also be updated to show Red bg only in crisis */}
+        {/* LiveWire Ticker */}
         <div className={isCrisisMode ? "brightness-125 saturate-150 transition-all duration-500" : "transition-all duration-500"}>
           <LiveWire items={liveWireItems} onItemClick={setActiveArticle} />
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-44 max-w-[2000px] py-8 space-y-6 lg:space-y-8">
+      {/* ═══ COMMAND CENTER CONTENT ═══ */}
+      {category === 'surveillance' ? (
+        <div style={{ height: `calc(100vh - ${headerOffset})` }}>
+          <GlobalCamGrid onOverrideClick={() => setIsAdminModalOpen(true)} />
+        </div>
+      ) : (
+        <CommandCenterLayout
+          headerHeight={headerOffset}
+          mapSlot={
+            <StrategicTheaterMap 
+              onRegionSelect={setRegion} 
+              selectedRegion={region} 
+              articles={allArticles} 
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
+              isGoodNewsMode={isGoodNewsMode}
+              onCountrySelect={(iso: string) => {
+                const intel = getGeopoliticalIntelligence(allArticles);
+                if (intel[iso]) setSelectedCountryIntel(intel[iso]);
+              }}
+            />
+          }
 
-        {/* Map Section */}
-        <section className={`transition-opacity duration-500 ${isCrisisMode ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
-          <WorldMap onRegionSelect={setRegion} selectedRegion={region} />
-        </section>
-
-        {isCrisisMode && (
-          <div className="w-full bg-red-950/50 border border-red-500 rounded-sm p-3 text-center animate-pulse relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)]" />
-            <h2 className="text-red-500 font-black tracking-[0.3em] text-sm uppercase relative z-10 font-mono">
-              ⚠️ PRIORITY ALERT: MILITARY ACTION DETECTED ⚠️
-            </h2>
-          </div>
-        )}
-
-        {/* Audio Overview Podcast Section - HIDDEN FOR UPCOMING REBRAND */}
-        {/* 
-        <section className="mt-6">
-          <PodcastPlayer 
-            type="overview" 
-            data={mainStories.slice(0, 5)} 
-            isPremium={isPremium}
-            onSubscribeClick={() => setIsPaywallOpen(true)}
-          />
-        </section>
-        */}
-
-        {/* Device Based Layout Blocks */}
-        <DesktopLayout>
-          {(() => {
-            const heroArt = allArticles[0];
-            const leftCols = allArticles.slice(1, 5);
-            const centerUnderHero = allArticles.slice(5, 12);
-            const rightCols = allArticles.slice(12, 16);
-            const remainder = allArticles.slice(16, 60);
-
-            return (
-              <div className="w-full flex flex-col space-y-8">
-                {/* Hero Headline */}
-                {heroArt && (
-                  <div className="w-full text-center max-w-6xl mx-auto my-6 px-4">
-                    <a 
-                      href={heroArt.url} 
-                      onClick={(e) => { e.preventDefault(); setActiveArticle(heroArt); }}
-                      className="block group cursor-pointer"
-                    >
-                      <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-bold ${theme.text} group-hover:text-orange-500 transition-colors leading-[1.15] tracking-tight font-serif text-balance`}>
-                        {heroArt.title}
-                      </h1>
-                    </a>
+          leftBottomSlot={
+            <div className="flex flex-col h-full bg-[#050505]">
+              <div className="px-3 py-2 border-b border-neutral-800/50 bg-neutral-900/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                      <Radar className="w-3 h-3 text-orange-500 animate-pulse" />
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
+                        Strategic Intelligence
+                      </span>
                   </div>
-                )}
-
-                {/* 3 Column Newspaper Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                  {/* Left Column (25%) */}
-                  <div className="lg:col-span-3 flex flex-col space-y-6">
-                    {leftCols.map(art => (
-                      <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="compact" />
-                    ))}
-                  </div>
-
-                  {/* Center Column (50%) */}
-                  <div className="lg:col-span-6 flex flex-col space-y-4">
-                    {heroArt && (
-                      <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
-                    )}
-                    {/* ── LIVE NEWS VIEWER — inserted between hero & live indicator ── */}
-                    <LiveNewsViewer />
-                    {/* Live updates / subtext styling */}
-                    <div className="flex items-center gap-2 mt-4 px-2">
-                       <span className="bg-red-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm animate-pulse tracking-widest flex items-center gap-1.5">
-                         <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" /> Live
-                       </span>
-                       <div className="h-[2px] bg-neutral-800 flex-grow rounded-full" />
-                    </div>
-                    {/* Related / Center Feed */}
-                    <div className="flex flex-col space-y-1">
-                      {centerUnderHero.map(art => (
-                        <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="text-only" />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right Column (25%) */}
-                  <div className="lg:col-span-3 flex flex-col space-y-6">
-                    {rightCols.map(art => (
-                      <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="compact" />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Separator */}
-                <div className={`w-full h-[1px] ${theme.border} my-12 bg-neutral-800/60`} />
-                
-                {/* Bottom Main Grid */}
-                <div>
-                   <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-4 mb-6 flex items-center gap-2 font-mono`}>
-                     <Radar className="w-5 h-5 text-orange-500" />
-                     Expanded Intelligence
-                   </h2>
-                   
-                   <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                     <AnimatePresence mode='popLayout'>
-                       {remainder.map((article, i) => (
-                         <motion.div
-                           key={article.id}
-                           initial={{ opacity: 0, scale: 0.95 }}
-                           animate={{ opacity: 1, scale: 1 }}
-                           transition={{ delay: i * 0.05 }}
-                         >
-                           <ItemCard item={article} onPlay={setActiveArticle} variant="default" />
-                         </motion.div>
-                       ))}
-                     </AnimatePresence>
-                   </div>
-                </div>
-
               </div>
-            );
-          })()}
-        </DesktopLayout>
-
-        <TabletLayout>
-          {(() => {
-            const heroArt = allArticles[0];
-            const leftCols = allArticles.slice(1, 5);
-            const centerUnderHero = allArticles.slice(5, 12);
-            const rightCols = allArticles.slice(12, 16);
-            const remainder = allArticles.slice(16, 40); // smaller set for tablet
-
-            return (
-              <div className="w-full flex flex-col space-y-8">
-                {/* Hero Headline */}
-                {heroArt && (
-                  <div className="w-full text-center max-w-4xl mx-auto my-4 px-2">
-                    <a 
-                      href={heroArt.url} 
-                      onClick={(e) => { e.preventDefault(); setActiveArticle(heroArt); }}
-                      className="block group cursor-pointer"
-                    >
-                      <h1 className={`text-4xl font-bold ${theme.text} group-hover:text-orange-500 transition-colors leading-[1.15] tracking-tight font-serif`}>
-                        {heroArt.title}
-                      </h1>
-                    </a>
-                  </div>
-                )}
-
-                {/* 2 Column Flow for Tablet */}
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Left: Hero Image + Subtext */}
-                  <div className="flex flex-col space-y-4">
-                    {heroArt && (
-                      <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
-                    )}
-                    {/* ── LIVE NEWS VIEWER — Tablet ── */}
-                    <LiveNewsViewer />
-                    <div className="flex items-center gap-2 mt-2 px-2">
-                       <span className="bg-red-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm animate-pulse tracking-widest flex items-center gap-1.5">
-                         <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" /> Live Data
-                       </span>
-                       <div className="h-[2px] bg-neutral-800 flex-grow rounded-full" />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      {centerUnderHero.map(art => (
-                        <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="text-only" />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right: Compact Cards */}
-                  <div className="flex flex-col space-y-6">
-                    {[...leftCols, ...rightCols].map(art => (
-                      <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="compact" />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Bottom Expanded Feed (2 cols) */}
-                <div className={`w-full h-[1px] ${theme.border} my-8 bg-neutral-800/60`} />
-                <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-2 mb-4 flex items-center gap-2 font-mono`}>
-                  <Radar className="w-4 h-4 text-orange-500" />
-                  Expanded Feed
-                </h2>
-                <div className={`grid grid-cols-2 gap-4 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                  {remainder.map(art => (
-                    <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="default" />
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </TabletLayout>
-
-        <MobileLayout>
-          {(() => {
-            const heroArt = allArticles[0];
-            const secondary = allArticles.slice(1, 10);
-            const remainder = allArticles.slice(10); // Show all remaining items on mobile for higher density
-
-            return (
-              <div className="flex flex-col space-y-8">
-                {/* Mobile Region Selector */}
-                <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar snap-x no-scrollbar">
-                  {['Global', 'US', 'Europe', 'Asia', 'Middle East', 'Africa', 'Americas'].map((reg) => (
-                    <button
-                      key={reg}
-                      onClick={() => setRegion(reg as Region)}
-                      className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-bold uppercase tracking-widest transition-all snap-start ${
-                        region === reg 
-                        ? 'bg-orange-600 text-black shadow-[0_0_15px_rgba(234,88,12,0.4)]' 
-                        : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
-                      }`}
-                    >
-                      {reg}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Hero Block Stacking */}
-                {heroArt && (
-                  <div className="flex flex-col space-y-4">
-                    <div className="w-full text-center px-2 py-2">
-                      <a 
-                        href={heroArt.url} 
-                        onClick={(e) => { e.preventDefault(); setActiveArticle(heroArt); }}
-                        className="block active:opacity-70 cursor-pointer"
-                      >
-                        <h1 className={`text-3xl font-bold ${theme.text} leading-tight tracking-tight font-serif text-balance`}>
-                          {heroArt.title}
-                        </h1>
-                      </a>
-                    </div>
-                    <ItemCard item={heroArt} onPlay={setActiveArticle} variant="hero" hideTitle={true} />
-                    {/* ── LIVE NEWS VIEWER — Mobile ── */}
-                    <LiveNewsViewer />
-                  </div>
-                )}
-                
-                {/* Live Feed as per Mockup */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 mb-4 px-1">
-                        <span className="bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-sm flex items-center gap-2 tracking-tight">
-                          <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_5px_white]" /> LIVE
-                        </span>
-                        <div className="h-[1px] bg-neutral-800 flex-grow" />
-                    </div>
-                    
-                    <div className="flex flex-col flex-grow divide-y divide-neutral-800/50">
-                      {secondary.slice(0, 15).map(art => (
-                        <div key={art.id} className="py-5 active:bg-neutral-900/40 transition-all cursor-pointer" onClick={() => setActiveArticle(art)}>
-                           <div className="flex gap-2 mb-2.5">
-                              <span className="text-[10px] font-black uppercase text-orange-600 border border-orange-600/30 px-1.5 py-0.5 rounded-sm bg-orange-600/5 tracking-tighter">NEWS</span>
-                              <span className="text-[10px] font-bold uppercase text-neutral-500 border border-neutral-800 px-1.5 py-0.5 rounded-sm tracking-tighter">GLOBAL</span>
-                           </div>
-                           <h3 className="text-[19px] font-bold text-neutral-100 leading-[1.3] font-sans tracking-tight mb-2">
-                              {art.title}
-                           </h3>
-                           <div className="flex items-center gap-2 text-[10px] text-neutral-600 font-mono">
-                              <Clock className="w-3 h-3" />
-                              {new Date(art.publishedAt).toLocaleString(undefined, {
-                                month: 'numeric',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }).replace(',', ' // ')}
-                           </div>
+              <div className="grid grid-cols-2 gap-[1px] bg-neutral-800/20">
+                  {isLoading ? (
+                    <>
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="bg-neutral-950 p-3 h-32">
+                          <ItemCardSkeleton variant="tactical-image" />
                         </div>
                       ))}
-                    </div>
+                    </>
+                  ) : (
+                    strategicArticles.map((article) => (
+                      <div key={article.id} className="item-card-anim bg-neutral-950 h-full">
+                        <ItemCard
+                          item={article}
+                        onPlay={(item) => {
+                          setIsActiveLiveInsight(false);
+                          setActiveArticle(item);
+                        }}
+                          variant="tactical-image"
+                        />
+                      </div>
+                    ))
+                  )}
+              </div>
+            </div>
+          }
+          videoSlot={
+            <LiveNewsViewer onOverrideClick={() => setIsAdminModalOpen(true)} />
+          }
+          feedSlot={
+            <>
+              {/* Crisis Alert Banner */}
+              {isCrisisMode && (
+                <div className="w-full bg-red-950/50 border-b border-red-500 p-2 text-center animate-pulse relative overflow-hidden">
+                  <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)]" />
+                  <h2 className="text-red-500 font-black tracking-[0.3em] text-[10px] uppercase relative z-10 font-mono">
+                    ⚠️ PRIORITY ALERT: MILITARY ACTION DETECTED ⚠️
+                  </h2>
                 </div>
+              )}
 
-                <div className={`w-full h-[1px] ${theme.border} my-6 bg-neutral-800/60`} />
-                
-                {/* Remainder Feed */}
-                <div className={`flex flex-col space-y-6 ${isCrisisMode ? '[&_div]:border-red-900/50 [&_div]:bg-red-950/30' : ''}`}>
-                   <h2 className={`text-sm font-bold uppercase tracking-widest ${theme.text} border-b ${theme.border} pb-4 mb-2 flex items-center gap-2 font-mono`}>
-                      <Radar className="w-5 h-5 text-orange-500" />
-                      Extended Feed
-                   </h2>
-                  {remainder.map(art => (
-                    <ItemCard key={art.id} item={art} onPlay={setActiveArticle} variant="default" />
-                  ))}
+              <div className="px-3 py-2.5 border-b border-neutral-800/50 bg-neutral-950/80 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-3.5 h-3.5 text-orange-500" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
+                    Tactical Metrics
+                  </span>
+                </div>
+                <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">
+                  Signal Strength: <span className="text-green-500">OPTIMAL</span>
                 </div>
               </div>
-            );
-          })()}
-        </MobileLayout>
 
+              {/* Tactical Widgets Grid */}
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-3 bg-neutral-950/20 auto-rows-min">
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <AIInsightsBrief content={tacticalData?.insights} />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <StrategicRiskGauge score={tacticalData?.globalRiskScore || 63} />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <StrategicPosture />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <AIForecasts metrics={tacticalData?.forecasts} />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <CountryInstability 
+                      countries={tacticalData?.instability} 
+                      onCountryClick={(nameOrIso) => {
+                        const intelArr = getGeopoliticalIntelligence(allArticles);
+                        const intel = intelArr[nameOrIso] || Object.values(intelArr).find(c => c.name.toLowerCase() === nameOrIso.toLowerCase());
+                        if (intel) setSelectedCountryIntel(intel);
+                      }}
+                    />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <CyberThreatRadar />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <IntelFeed 
+                      items={tacticalData?.intelFeed} 
+                      onItemClick={(item) => {
+                        const intelMap = getGeopoliticalIntelligence(allArticles);
+                        const t = (item.text || item.title || "").toLowerCase();
+                        const iso = Object.keys(intelMap).find(idx => 
+                          t.includes(intelMap[idx].name.toLowerCase())
+                        );
+
+                        if (iso) {
+                          setSelectedCountryIntel(intelMap[iso]);
+                        } else {
+                          setIsActiveLiveInsight(true);
+                          setActiveArticle({
+                            id: `intel-${Date.now()}`,
+                            title: item.text || item.title || 'Signal Analyzed',
+                            description: `Source: ${item.source}. Raw signal received via Tactical Data Fusion.`,
+                            url: '#',
+                            source: item.source,
+                            domain: 'intel.internal',
+                            publishedAt: new Date().toISOString(),
+                            biasMeta: {
+                              sourceReliability: 'high',
+                              ownershipType: 'unknown',
+                              countryOfOrigin: 'Internal',
+                              geopoliticalAlignment: 'western',
+                              sensationalismScore: 0,
+                              emotionallyLoadedLanguage: false
+                            },
+                            tags: ['LIVE_INTEL', item.badge || 'REPORT']
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </Suspense>
+                <Suspense fallback={<TacticalWidgetSkeleton />}>
+                  <div className="item-card-anim">
+                    <AviationStatusCard />
+                  </div>
+                </Suspense>
+              </div>
+
+            </>
+          }
+        />
+      )}
+
+      {/* Scroll Sentinel for Footer Reveal */}
+      <div ref={sentinelRef} className="h-4 w-full" id="footer-sentinel" />
+
+      {/* Global Footer - Animated Slide Up */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-neutral-800 z-[100] transition-all duration-500 ease-out transform ${
+        isFooterVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'
+      }`}>
         <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
       </div>
 
@@ -639,7 +580,20 @@ function DashboardContent() {
           setIsPaywallOpen(false);
         }} 
       />
-
+      {/* Tactical Override Modal */}
+      <AdminCamModal 
+          isOpen={isAdminModalOpen} 
+          onClose={() => setIsAdminModalOpen(false)} 
+          onAdd={(newCam) => {
+              addCam(newCam);
+          }}
+      />
+      {selectedCountryIntel && (
+        <LiveInsightModal 
+          intel={selectedCountryIntel} 
+          onClose={() => setSelectedCountryIntel(null)} 
+        />
+      )}
       </main>
     </div>
   );
@@ -647,7 +601,7 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-neutral-950 p-8"><DashboardSkeleton /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]"><DashboardSkeleton /></div>}>
       <DashboardContent />
     </Suspense>
   );

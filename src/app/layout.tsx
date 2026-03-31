@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Inter, Merriweather } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import type { Metadata } from "next";
@@ -33,7 +33,18 @@ export const viewport = {
   themeColor: "#020617", // slate-950
 };
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const merriweather = Merriweather({
+  weight: ['400', '700'],
+  subsets: ['latin'],
+  variable: '--font-merriweather',
+  display: 'swap',
+});
 
 export default function RootLayout({
   children,
@@ -41,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={inter.className}>
+    <html lang="en" className={`dark ${inter.variable} ${merriweather.variable}`}>
+      <body className="antialiased">
         <Providers>
           {children}
         </Providers>

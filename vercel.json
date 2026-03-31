@@ -1,8 +1,8 @@
 {
-    "crons": [
-        {
-            "path": "/api/cron/newsletter",
-            "schedule": "0 8 * * *"
-        }
-    ]
+  "crons": [
+    {
+      "path": "/api/cron/fusion",
+      "schedule": "0 0,8,16 * * *"
+    }
+  ]
 }
