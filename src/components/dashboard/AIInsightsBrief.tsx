@@ -21,17 +21,17 @@ export default function AIInsightsBrief({ content }: { content?: string }) {
   };
 
   return (
-    <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-4 shadow-lg h-full flex flex-col font-mono">
-      <div className="flex items-center gap-2 mb-3 border-b border-slate-800 pb-2">
-        <div className="animate-pulse bg-emerald-500 rounded-full w-2 h-2 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-        <h3 className="uppercase text-xs text-slate-400 font-bold tracking-widest flex-1">
-          AI Intelligence Synthesis
+    <div className="bg-slate-950/80 border border-slate-800 rounded-sm p-2 shadow-lg h-full flex flex-col font-mono max-h-[250px] overflow-y-auto custom-scrollbar">
+      <div className="flex items-center gap-2 mb-2 border-b border-slate-800 pb-1.5">
+        <div className="animate-pulse bg-emerald-500 rounded-full w-1.5 h-1.5 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+        <h3 className="uppercase text-[10px] text-slate-400 font-bold tracking-widest flex-1">
+          AI Synthesis
         </h3>
-        <span className="text-[10px] text-emerald-500 font-bold tracking-widest">LIVE</span>
+        <span className="text-[9px] text-emerald-500 font-bold tracking-widest">LIVE</span>
       </div>
       
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
-        <p className="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">
+      <div className="flex-1 pr-1">
+        <p className="text-xs text-slate-300 leading-tight break-words whitespace-pre-wrap">
           <motion.span
             variants={containerVariants}
             initial="hidden"

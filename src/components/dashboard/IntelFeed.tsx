@@ -33,65 +33,62 @@ export default function IntelFeed({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-4 shadow-lg h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+    <div className="bg-slate-900/80 border border-slate-800 rounded-sm p-2 shadow-lg h-full flex flex-col max-h-[250px] overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
         <div className="flex items-center gap-2">
-            <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-            <h3 className="uppercase font-sans text-xs text-slate-400 font-bold tracking-widest">
-                Raw Intelligence Feed
+            <Radio className="w-3 h-3 text-blue-400 animate-pulse" />
+            <h3 className="uppercase font-sans text-[10px] text-slate-400 font-bold tracking-widest">
+                Raw Intelligence
             </h3>
         </div>
-        <ListFilter className="w-3.5 h-3.5 text-slate-600" />
+        <ListFilter className="w-3 h-3 text-slate-600" />
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-1 space-y-3 no-scrollbar max-h-[220px]">
+      <div className="flex-1 pr-1 space-y-2">
         {headlines.map((h, i) => (
           <div 
             key={i} 
             onClick={() => onItemClick?.(h as IntelItem)}
-            className="flex gap-3 text-[11px] font-sans group border-b border-slate-800/30 pb-2 last:border-0 hover:bg-slate-800/40 transition-colors cursor-pointer"
+            className="flex gap-2 text-[10px] font-sans group border-b border-slate-800/30 pb-1.5 last:border-0 hover:bg-slate-800/40 transition-colors cursor-pointer"
           >
-            <span className="text-slate-600 whitespace-nowrap">{h.time}</span>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="text-white font-black tracking-tight">{h.source}</span>
+            <span className="text-slate-600 whitespace-nowrap text-[9px]">{h.time}</span>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-white font-black tracking-tight text-[9px]">{h.source}</span>
                 {(h.type === 'ALERT' || h.type === 'CONFLICT' || h.type === 'CYBER' || h.type === 'TECH') && (
-                    <span className={`border text-[9px] px-1 rounded font-black italic ${
+                    <span className={`border text-[8px] px-1 rounded font-black italic leading-none ${
                         h.type === 'ALERT' ? 'bg-red-950 text-red-500 border-red-900' :
                         h.type === 'CONFLICT' ? 'bg-orange-950 text-orange-500 border-orange-900' :
                         h.type === 'CYBER' ? 'bg-blue-950 text-blue-400 border-blue-900' :
                         'bg-neutral-800 text-neutral-400 border-neutral-700'
                     }`}>{h.type}</span>
                 )}
-                {/* Geopolitical Engine Indicator */}
                 {h.text.match(/usa|china|russia|ukraine|israel|iran|sudan|taiwan|korea|india|brazil|france|germany|venezuela|nigeria/i) && (
-                  <span className="bg-emerald-950 text-emerald-500 border border-emerald-900 text-[9px] px-1 rounded font-black italic">INTEL</span>
+                  <span className="bg-emerald-950 text-emerald-500 border border-emerald-900 text-[8px] px-1 rounded font-black italic leading-none">INTEL</span>
                 )}
               </div>
-              <p className="text-slate-400 leading-tight group-hover:text-slate-200 transition-colors">
+              <p className="text-slate-400 leading-tight group-hover:text-slate-200 transition-colors text-[10px]">
                 {h.text}
               </p>
               <div className="flex items-center gap-2 mt-1">
                  <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    // We'll pass this handling to the parent who knows the ISO
                     onItemClick?.(h as IntelItem);
                   }}
-                  className="text-[9px] text-blue-400 font-bold hover:underline tracking-tighter"
+                  className="text-[8px] text-blue-400 font-bold hover:underline tracking-tighter"
                  >
-                   [ DETAILS ]
+                   [ DETAIL ]
                  </button>
                  <span className="text-slate-700">|</span>
                  <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    // This will be handled by parent mapping title to country
                     onItemClick?.(h as IntelItem);
                   }}
-                  className="text-[9px] text-emerald-400 font-bold hover:underline tracking-tighter"
+                  className="text-[8px] text-emerald-400 font-bold hover:underline tracking-tighter"
                  >
-                   [ INTEL BRIEF ]
+                   [ BRIEF ]
                  </button>
               </div>
             </div>

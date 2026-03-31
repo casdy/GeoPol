@@ -39,10 +39,10 @@ export class MapEngine {
    * Efficiently toggles all sub-layers associated with a feature.
    */
   syncLayerVisibility(layerIds: string[], visible: boolean) {
-    if (!this.map || !this.ready) return;
+    const map = this.map;
+    if (!map || !this.ready) return;
     
     const visibility = visible ? 'visible' : 'none';
-    const map = this.map; // Lexical capture for safety
     layerIds.forEach(id => {
       try {
         if (map.getLayer(id)) {
@@ -58,9 +58,14 @@ export class MapEngine {
    * Syncs data for a specific source.
    */
   syncSourceData(sourceId: string, data: any) {
-    if (!this.map || !this.ready) return;
+    const map = this.map;
+    if (!map || !this.ready) return;
+    
     try {
-      const source = this.map.getSource(sourceId) as maplibregl.GeoJSONSource;
+      // Final guard: Ensure Map is in a state where getSource exists and can be called
+      if (typeof map.getSource !== 'function') return;
+
+      const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
       if (source && data) {
         source.setData(data);
       }

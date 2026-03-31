@@ -349,7 +349,7 @@ export default function StrategicTheaterMap({
   }, [activeLayers, syncLayers, isGoodNewsMode]);
 
   useEffect(() => {
-    if (!isMapReady) return;
+    if (!isMapReady || !mapRef.current) return;
     const hotspots = getLiveHotspots(articles);
     updateSource('dynamic-hotspots', { type: 'FeatureCollection', features: hotspots.map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: h.coords }, properties: { ...h } })) });
 
@@ -371,9 +371,13 @@ export default function StrategicTheaterMap({
   }, [articles, updateSource]);
 
   const fetchData = useCallback(async () => {
-    if (!mapRef.current || !isMapReady) return;
+    if (!mapRef.current || !isMapReady || !mapStyleLoadedRef.current) return;
     try {
       const [eonetData, cryptoAviationData] = await Promise.all([fetchNasaEonet(), fetchOpenSky()]);
+      
+      // Secondary check after async task
+      if (!mapRef.current || !isMapReady) return;
+
       updateSource('nasa-eonet', eonetData);
       updateSource('opensky-aviation', cryptoAviationData);
     } catch (e) {

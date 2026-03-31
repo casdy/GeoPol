@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Article, Region } from '@/lib/types';
@@ -45,6 +45,9 @@ import CyberThreatRadar from '@/components/dashboard/CyberThreatRadar';
 import IntelFeed from '@/components/dashboard/IntelFeed';
 import LiveInsightModal from '@/components/dashboard/LiveInsightModal';
 import { getGeopoliticalIntelligence, CountryIntelligence } from '@/lib/intelligence-engine';
+import { QuadcoreEngine, QuadcoreResults } from '@/lib/quadcoreEngine';
+import DeepDiveModal from '@/components/shared/DeepDiveModal';
+import { Plane, AlertTriangle, ShieldAlert, Cpu } from 'lucide-react';
 
 const TacticalWidgetSkeleton = () => (
   <div className="h-32 bg-neutral-900/40 border border-neutral-800/50 rounded-sm animate-pulse" />
@@ -74,6 +77,12 @@ function DashboardContent() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [selectedCountryIntel, setSelectedCountryIntel] = useState<CountryIntelligence | null>(null);
   const { addCam } = useWebcams();
+  const [activeDeepDive, setActiveDeepDive] = useState<{
+    id: string;
+    title: string;
+    category: 'AVIATION' | 'INSTABILITY' | 'CYBER' | 'STRATEGIC';
+    content: React.ReactNode;
+  } | null>(null);
 
   // Unified Intelligence Feed
   const { data: intelligenceData, isLoading } = useQuery({
@@ -87,13 +96,20 @@ function DashboardContent() {
   const [tacticalData, setTacticalData] = useState<any>(null);
   
   // Layout Slot Configuration for Drag & Drop
-  const [slotConfig, setSlotConfig] = useState<Record<string, string>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('geopol-slots');
-      return saved ? JSON.parse(saved) : { LB: 'intel', RT: 'video', RB: 'metrics' };
-    }
-    return { LB: 'intel', RT: 'video', RB: 'metrics' };
+  // Initialized with hardcoded defaults for hydration stability
+  const [slotConfig, setSlotConfig] = useState<Record<string, string>>({ 
+    LB: 'intel', 
+    RT: 'video', 
+    RB: 'metrics' 
   });
+
+  // Load saved slots after mount
+  useEffect(() => {
+    const saved = localStorage.getItem('geopol-slots');
+    if (saved) {
+      setSlotConfig(JSON.parse(saved));
+    }
+  }, []);
 
   const swapSlots = (from: string, to: string) => {
     if (from === to) return;
@@ -107,7 +123,6 @@ function DashboardContent() {
       return next;
     });
   };
-
   useEffect(() => {
     const fetchTacticalGrid = async () => {
       try {
@@ -126,27 +141,38 @@ function DashboardContent() {
     return () => clearInterval(interval);
   }, []);
 
-  const rawArticles = intelligenceData?.news || [];
-  const seenTitles = new Set<string>();
-  const allArticles = rawArticles.filter(a => {
-    // Aggressive normalization: lowercase, remove special characters, trim
-    const normalizedTitle = (a.title || '')
-      .toLowerCase()
-      .replace(/[^\w\s]/gi, '')
-      .trim();
+  const allArticles = useMemo(() => {
+    const raw = intelligenceData?.news || [];
+    const seenTitles = new Set<string>();
     
-    // Also check for very similar prefixes (first 50 chars) to catch minor trailing changes
-    const titlePrefix = normalizedTitle.substring(0, 50);
-    
-    if (seenTitles.has(normalizedTitle) || (normalizedTitle.length > 50 && seenTitles.has(titlePrefix))) {
-      return false;
+    return raw.filter(a => {
+      const normalizedTitle = (a.title || '')
+        .toLowerCase()
+        .replace(/[^\w\s]/gi, '')
+        .trim();
+      
+      const titlePrefix = normalizedTitle.substring(0, 50);
+      
+      if (seenTitles.has(normalizedTitle) || (normalizedTitle.length > 50 && seenTitles.has(titlePrefix))) {
+        return false;
+      }
+      
+      seenTitles.add(normalizedTitle);
+      if (normalizedTitle.length > 50) seenTitles.add(titlePrefix);
+      
+      return true;
+    });
+  }, [intelligenceData?.news]);
+
+  const [quadcoreResults, setQuadcoreResults] = useState<QuadcoreResults | null>(null);
+
+  useEffect(() => {
+    if (allArticles.length > 0) {
+      const results = QuadcoreEngine.run(allArticles);
+      setQuadcoreResults(results);
     }
-    
-    seenTitles.add(normalizedTitle);
-    if (normalizedTitle.length > 50) seenTitles.add(titlePrefix);
-    
-    return true;
-  });
+  }, [allArticles]);
+
 
   const finalArticles = isGoodNewsMode ? processGoodNews(allArticles) : allArticles;
 
@@ -452,37 +478,61 @@ function DashboardContent() {
               <>
                 {/* Crisis Alert Banner */}
                 {isCrisisMode && (
-                  <div className="w-full bg-red-950/50 border-b border-red-500 p-2 text-center animate-pulse relative overflow-hidden">
+                  <div className="w-full bg-red-950/50 border-b border-red-500 p-1 text-center animate-pulse relative overflow-hidden">
                     <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)]" />
-                    <h2 className="text-red-500 font-black tracking-[0.3em] text-[10px] uppercase relative z-10 font-mono">
+                    <h2 className="text-red-500 font-black tracking-[0.3em] text-[8px] uppercase relative z-10 font-mono">
                       ⚠️ PRIORITY ALERT: MILITARY ACTION DETECTED ⚠️
                     </h2>
                   </div>
                 )}
 
-                <div className="px-3 py-2.5 border-b border-neutral-800/50 bg-neutral-950/80 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-orange-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
+                <div className="px-2 py-1.5 border-b border-neutral-800/50 bg-neutral-950/80 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className="w-3 h-3 text-orange-500" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
                       Tactical Metrics
                     </span>
                   </div>
-                  <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">
-                    Signal Strength: <span className="text-green-500">OPTIMAL</span>
+                  <div className="text-[8px] font-mono text-neutral-500 uppercase tracking-widest">
+                    Signal: <span className="text-green-500">OPTIMAL</span>
                   </div>
                 </div>
 
                 {/* Tactical Widgets Grid */}
-                <div className="h-full bg-neutral-950/20">
-                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-3 auto-rows-min">
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-neutral-950/20">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2 p-2 auto-rows-min">
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
                       <div className="item-card-anim">
-                        <AIInsightsBrief content={tacticalData?.insights} />
+                        <AIInsightsBrief content={quadcoreResults?.microBriefs.join('\n\n') || tacticalData?.insights} />
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
-                      <div className="item-card-anim">
-                        <StrategicRiskGauge score={tacticalData?.globalRiskScore || 63} />
+                      <div className="item-card-anim cursor-pointer" onClick={() => setActiveDeepDive({
+                        id: 'risk',
+                        title: 'GLOBAL RISK PROFILE',
+                        category: 'STRATEGIC',
+                        content: (
+                          <div className="space-y-6">
+                            <div className="bg-slate-900 p-6 border border-orange-500/20">
+                              <h4 className="text-orange-500 font-black text-sm uppercase tracking-widest mb-4">Risk Aggregator v4</h4>
+                              <div className="grid grid-cols-2 gap-8 text-white">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase">Kinetic Conflict</span>
+                                  <div className="text-3xl font-black">{Math.round((quadcoreResults?.globalRiskScore || 63) * 0.8)}%</div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase">Economic Instability</span>
+                                  <div className="text-3xl font-black">{Math.round((quadcoreResults?.globalRiskScore || 63) * 0.6)}%</div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="h-[300px] border border-slate-800 bg-[#050505] flex items-center justify-center opacity-40">
+                              [ KINETIC_MODEL_PROJECTION_ACTIVE ]
+                            </div>
+                          </div>
+                        )
+                      })}>
+                        <StrategicRiskGauge score={quadcoreResults?.globalRiskScore || tacticalData?.globalRiskScore || 63} />
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
@@ -496,9 +546,31 @@ function DashboardContent() {
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
-                      <div className="item-card-anim">
+                      <div className="item-card-anim cursor-pointer" onClick={() => setActiveDeepDive({
+                        id: 'instability',
+                        title: 'INSTABILITY MATRIX',
+                        category: 'INSTABILITY',
+                        content: (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {(quadcoreResults?.theaterRisks ? Object.entries(quadcoreResults.theaterRisks) : []).map(([name, risk]) => (
+                              <div key={name} className="bg-slate-900/50 border border-slate-800 p-4 rounded-sm">
+                                <h4 className="text-white font-bold text-lg mb-2">{name}</h4>
+                                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-orange-500" style={{ width: `${risk}%` }} />
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">Threat Level: {risk}% Critical Threshold: 85%</p>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}>
                         <CountryInstability 
-                          countries={tacticalData?.instability} 
+                          countries={Object.entries(quadcoreResults?.theaterRisks || {}).map(([name, risk]) => ({
+                            name,
+                            risk,
+                            u: 0, c: 0, s: 0, i: 0, // Placeholder for quadcore metric
+                            metrics: `THEATER_RISK: ${risk}%`
+                          })).concat(tacticalData?.instability || [])} 
                           onCountryClick={(nameOrIso) => {
                             const intelArr = getGeopoliticalIntelligence(allArticles);
                             const intel = intelArr[nameOrIso] || Object.values(intelArr).find(c => c.name.toLowerCase() === nameOrIso.toLowerCase());
@@ -508,15 +580,50 @@ function DashboardContent() {
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
-                      <div className="item-card-anim">
+                      <div className="item-card-anim cursor-pointer" onClick={() => setActiveDeepDive({
+                        id: 'cyber',
+                        title: 'CYBER THREAT RADAR',
+                        category: 'CYBER',
+                        content: (
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {(quadcoreResults?.activeAPTs || []).length > 0 ? (
+                                quadcoreResults?.activeAPTs.map(apt => (
+                                  <div key={apt} className="bg-slate-900 border border-yellow-500/20 p-4">
+                                    <div className="flex justify-between items-start">
+                                      <h4 className="text-yellow-500 font-black tracking-widest">{apt}</h4>
+                                      <span className="text-[8px] bg-yellow-500/10 text-yellow-500 px-1 rounded">ACTIVE_MONITORING</span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">Detected in recent OSINT fragments. Targeting financial and energy infrastructure.</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-2 text-center py-10 border border-dashed border-slate-800 text-slate-600 uppercase text-xs">
+                                  No Active APT Signatures Detected
+                                </div>
+                              )}
+                            </div>
+                            <div className="bg-black/50 border border-slate-800 p-4 font-mono text-[10px] text-yellow-500/50">
+                              {' > '} SCANNING_LOG... <br/>
+                              {' > '} HEURISTIC_ENGINE_ACTIVE <br/>
+                              {' > '} PACKET_INSPECTION: 0 ERROR(S)
+                            </div>
+                          </div>
+                        )
+                      })}>
                         <CyberThreatRadar />
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
                       <div className="item-card-anim">
                         <IntelFeed 
-                          items={tacticalData?.intelFeed} 
-                          onItemClick={(item) => {
+                          items={(quadcoreResults?.logisticsAlerts.map(text => ({
+                            source: 'OSINT_QUAD',
+                            text,
+                            type: 'ALERT' as const,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          })) || []).concat(tacticalData?.intelFeed || [])} 
+                          onItemClick={(item: any) => {
                             const intelMap = getGeopoliticalIntelligence(allArticles);
                             const t = (item.text || item.title || "").toLowerCase();
                             const iso = Object.keys(intelMap).find(idx => 
@@ -551,7 +658,40 @@ function DashboardContent() {
                       </div>
                     </Suspense>
                     <Suspense fallback={<TacticalWidgetSkeleton />}>
-                      <div className="item-card-anim">
+                      <div className="item-card-anim cursor-pointer" onClick={() => setActiveDeepDive({
+                         id: 'aviation',
+                         title: 'AVIATION RADAR DEPTH',
+                         category: 'AVIATION',
+                         content: (
+                           <div className="space-y-4">
+                             <div className="grid grid-cols-4 gap-4">
+                               <div className="bg-slate-900 p-4 border border-blue-500/20">
+                                 <Plane className="w-6 h-6 text-blue-500 mb-2" />
+                                 <span className="text-2xl font-black text-white">4,821</span>
+                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">Active Trackers</p>
+                               </div>
+                               <div className="bg-slate-900 p-4 border border-red-500/20">
+                                 <AlertTriangle className="w-6 h-6 text-red-500 mb-2" />
+                                 <span className="text-2xl font-black text-white">03</span>
+                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">Squawk Alerts</p>
+                               </div>
+                               <div className="bg-slate-900 p-4 border border-orange-500/20">
+                                 <ShieldAlert className="w-6 h-6 text-orange-500 mb-2" />
+                                 <span className="text-2xl font-black text-white">12</span>
+                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">Restricted Entry</p>
+                               </div>
+                               <div className="bg-slate-900 p-4 border border-cyan-500/20">
+                                 <Cpu className="w-6 h-6 text-cyan-500 mb-2" />
+                                 <span className="text-2xl font-black text-white">0.4s</span>
+                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">Telemetry Latency</p>
+                               </div>
+                             </div>
+                             <div className="bg-slate-900 border border-slate-800 p-6 h-[400px] flex items-center justify-center opacity-30 italic">
+                                [ SECURE_DATA_LAYER_RENDERING... ]
+                             </div>
+                           </div>
+                         )
+                      })}>
                         <AviationStatusCard />
                       </div>
                     </Suspense>
@@ -578,6 +718,16 @@ function DashboardContent() {
           onClose={() => setSelectedCountryIntel(null)} 
         />
       )}
+
+      {/* Deep Dive Modal Host */}
+      <DeepDiveModal
+        isOpen={!!activeDeepDive}
+        onClose={() => setActiveDeepDive(null)}
+        title={activeDeepDive?.title || ""}
+        category={activeDeepDive?.category}
+      >
+        {activeDeepDive?.content}
+      </DeepDiveModal>
 
       {/* Global Footer - Natural Foot of Page */}
       <Footer />

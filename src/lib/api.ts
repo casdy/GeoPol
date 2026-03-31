@@ -465,10 +465,10 @@ function getWeatherCondition(code: number): { condition: string; description: st
 
 export async function fetchWeather(): Promise<WeatherData[]> {
     try {
-        const shuffled = [...STRATEGIC_CITIES].sort(() => 0.5 - Math.random());
-        const selectedCities = shuffled.slice(0, 10);
+        // Use a fixed slice of the first 10 strategic cities for deterministic results
+        const selectedCities = STRATEGIC_CITIES.slice(0, 10);
 
-        const weatherPromises = selectedCities.map(async (city) => {
+        const weatherPromises = selectedCities.map(async (city, index) => {
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m`;
             
             let attempts = 0;
@@ -483,7 +483,7 @@ export async function fetchWeather(): Promise<WeatherData[]> {
                     const { condition, description } = getWeatherCondition(data.current.weather_code);
 
                     return {
-                        id: Math.floor(Math.random() * 100000),
+                        id: 1000 + index, // Deterministic ID based on index
                         name: city.name,
                         temp: Math.round(data.current.temperature_2m),
                         condition: condition,
@@ -500,7 +500,7 @@ export async function fetchWeather(): Promise<WeatherData[]> {
                     if (attempts >= maxAttempts) {
                         // Return a graceful mock for this specific city if the fetch fails after 3 tries
                         return {
-                            id: Math.floor(Math.random() * 100000),
+                            id: 1000 + index,
                             name: city.name,
                             temp: 15,
                             condition: 'Clear',

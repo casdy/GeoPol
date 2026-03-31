@@ -305,7 +305,7 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
       </div>
 
       {/* STATUS BAR */}
-      <div className="px-3 py-1.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+      <div className="px-2 py-1 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.4)]" />
@@ -325,26 +325,26 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
       </div>
 
       {/* 4-SPLIT SURVEILLANCE GRID (BOTTOM) */}
-      <div className="grid grid-cols-2 bg-black border-t border-slate-800 gap-[1px]">
+      <div className="grid grid-cols-2 bg-black border-t border-slate-800 gap-[1px] max-h-[160px] overflow-hidden">
         {surveillanceChannels.map((cam, idx) => (
           <button 
             key={cam.id} 
             onClick={() => promoteToPrimary(cam)}
-            className="relative aspect-video group overflow-hidden bg-slate-950 text-left border-none outline-none focus:ring-2 focus:ring-cyan-500/50 z-10"
+            className="relative aspect-video group overflow-hidden bg-slate-950 text-left border-none outline-none focus:ring-1 focus:ring-cyan-500/50 z-10"
           >
             <iframe
               src={`${cam.youtubeUrl}${cam.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=0&playsinline=1&modestbranding=1`}
-              className="w-full h-full opacity-60 group-hover:opacity-100 transition-all duration-700 pointer-events-none"
+              className="w-full h-full opacity-40 group-hover:opacity-100 transition-all duration-700 pointer-events-none"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-2 left-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                <span className="text-[9px] font-black text-white/50 group-hover:text-white uppercase tracking-widest truncate transition-colors font-mono">
-                    {cam.city} // {cam.country}
+            <div className="absolute bottom-1 left-2 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                <span className="text-[8px] font-black text-white/40 group-hover:text-white uppercase tracking-widest truncate transition-colors font-mono">
+                    {cam.city}
                 </span>
             </div>
-            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/80 border border-slate-800 text-[8px] font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-1 right-1 px-1 py-0.5 bg-black/80 border border-slate-800 text-[6px] font-mono text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
               SLOT_{idx + 1}
             </div>
           </button>

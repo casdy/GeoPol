@@ -33,26 +33,26 @@ export default function CountryInstability({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-4 shadow-lg h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-        <h3 className="uppercase font-sans text-xs text-slate-400 font-bold tracking-widest">
+    <div className="bg-slate-900/80 border border-slate-800 rounded-sm p-2 shadow-lg h-full flex flex-col max-h-[250px] overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
+        <h3 className="uppercase font-sans text-[10px] text-slate-400 font-bold tracking-widest">
             Instability Matrix
         </h3>
-        <AlertTriangle className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+        <AlertTriangle className="w-3 h-3 text-orange-500 animate-pulse" />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {data.map((cty) => (
           <div 
             key={cty.name} 
-            onClick={() => onCountryClick?.(cty.name)} // Assuming name is ISO for now or maps well
-            className="space-y-1.5 group cursor-pointer hover:bg-slate-800/30 p-1 -m-1 rounded transition-colors"
+            onClick={() => onCountryClick?.(cty.name)} 
+            className="space-y-1 group cursor-pointer hover:bg-slate-800/30 p-1 -m-1 rounded transition-colors"
           >
             <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black font-sans text-white tracking-widest uppercase">
+                <span className="text-[9px] font-black font-sans text-white tracking-widest uppercase">
                     {cty.name}
                 </span>
-                <span className="text-[9px] font-sans text-orange-500 font-bold">
+                <span className="text-[8px] font-sans text-orange-500 font-bold">
                     {Math.round(cty.risk)}% RISK
                 </span>
             </div>
@@ -64,7 +64,7 @@ export default function CountryInstability({
                 />
             </div>
 
-            <div className="text-[10px] font-sans text-slate-500 uppercase tracking-tighter opacity-80 group-hover:opacity-100 transition-opacity">
+            <div className="text-[9px] font-sans text-slate-500 uppercase tracking-tighter opacity-80 group-hover:opacity-100 transition-opacity">
                 {cty.metrics}
             </div>
           </div>

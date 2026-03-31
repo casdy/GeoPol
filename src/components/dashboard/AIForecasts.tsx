@@ -36,20 +36,20 @@ export default function AIForecasts({ metrics }: { metrics?: ForecastMetric[] })
     : data.filter(f => f.category === activeTab);
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-4 shadow-lg h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-        <h3 className="uppercase font-mono text-xs text-slate-400 font-bold tracking-widest">
+    <div className="bg-slate-900/80 border border-slate-800 rounded-sm p-2 shadow-lg h-full flex flex-col max-h-[250px] overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
+        <h3 className="uppercase font-mono text-[10px] text-slate-400 font-bold tracking-widest">
             AI Probability Forecasts
         </h3>
-        <Target className="w-3.5 h-3.5 text-slate-600" />
+        <Target className="w-3 h-3 text-slate-600" />
       </div>
 
-      <div className="flex gap-1 mb-4">
+      <div className="flex gap-1 mb-2">
         {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`text-[8px] px-2 py-0.5 font-black rounded-sm border transition-all ${
+            className={`text-[7px] px-1.5 py-0.5 font-black rounded-sm border transition-all ${
                 activeTab === tab 
                 ? 'bg-blue-600 border-blue-500 text-white' 
                 : 'bg-black/40 border-slate-800 text-slate-500 hover:text-slate-300'
@@ -60,13 +60,13 @@ export default function AIForecasts({ metrics }: { metrics?: ForecastMetric[] })
         ))}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filtered.map((item, idx) => (
-          <div key={idx} className="space-y-1.5 group">
-            <p className="text-[10px] font-mono text-slate-300 uppercase tracking-tight group-hover:text-emerald-400 transition-colors">
+          <div key={idx} className="space-y-1 group">
+            <p className="text-[9px] font-mono text-slate-300 uppercase tracking-tight group-hover:text-emerald-400 transition-colors">
               {item.q}
             </p>
-            <div className="h-1.5 w-full bg-slate-950/80 rounded-full overflow-hidden flex border border-slate-800/50">
+            <div className="h-1 w-full bg-slate-950/80 rounded-full overflow-hidden flex border border-slate-800/50">
                 <div 
                     title={`YES: ${item.yes}%`}
                     style={{ width: `${item.yes}%` }} 
@@ -78,7 +78,7 @@ export default function AIForecasts({ metrics }: { metrics?: ForecastMetric[] })
                     className="h-full bg-red-500 transition-all duration-1000"
                 />
             </div>
-            <div className="flex justify-between font-mono text-[8px] font-black tracking-widest px-0.5">
+            <div className="flex justify-between font-mono text-[7.5px] font-black tracking-widest px-0.5">
                 <span className="text-emerald-500 uppercase">YES {item.yes}%</span>
                 <span className="text-red-500 uppercase">NO {item.no}%</span>
             </div>

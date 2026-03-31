@@ -77,7 +77,7 @@ export default function CommandCenterLayout({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-2 p-2 lg:h-full w-full lg:overflow-hidden bg-[#050505]">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-1 lg:gap-1 p-1 lg:h-full w-full lg:overflow-hidden bg-[#050505]">
       
       {/* ── LEFT COLUMN (65%) ────────────────────────────────────── */}
       <div className="col-span-1 lg:col-span-8 flex flex-col lg:h-full lg:overflow-hidden gap-2">

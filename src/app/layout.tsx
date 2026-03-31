@@ -44,6 +44,7 @@ const merriweather = Merriweather({
   subsets: ['latin'],
   variable: '--font-merriweather',
   display: 'swap',
+  preload: false,
 });
 
 export default function RootLayout({

@@ -25,7 +25,9 @@ export default function WeatherInsightsSlideshow() {
         return () => clearInterval(interval);
     }, [weather]);
 
-    if (isLoading || !weather || weather.length === 0) {
+    const current = (weather && weather.length > 0) ? weather[currentIndex] : null;
+
+    if (isLoading || !weather || weather.length === 0 || !current) {
         return (
             <div className="h-14 w-48 bg-black/40 border border-white/5 flex items-center justify-center gap-2 px-3 animate-pulse">
                 <Orbit className="w-3 h-3 text-cyan-500 animate-spin" />
@@ -33,8 +35,6 @@ export default function WeatherInsightsSlideshow() {
             </div>
         );
     }
-
-    const current = weather[currentIndex];
 
     // Map condition to monospace string
     const conditionTag = `[ ${current.condition.toUpperCase().replace(/\s/g, '_')} ]`;
