@@ -24,22 +24,22 @@ export async function POST(req: Request) {
     });
 
     const prompt = `You are a GeoPol Intelligence Analyst. 
-Task: Synthesize a high-density "Tactical Intelligence Brief" for a field commander.
+Task: Synthesize a deep-theater "Strategic Intelligence Brief" for a field commander.
 Context: Article Title: ${title}, Description: ${description}, Source: ${source}.
 
 Requirements:
 - TONE: Professional, cold, analytical (Military Grade).
-- FORMAT: Single paragraph, max 60 words.
-- CONTENT: Focus on strategic implications and tactical shifts.
-- DICTION: Use terms like 'Vector', 'Kinetic', 'Asymmetric', 'Buffer Zone', 'Signal Density'.
-- NO introductory phrases like "Here is the summary". Start directly with the intel.`;
+- FORMAT: 2 to 3.5 structured paragraphs. Length: 150-250 words total.
+- CONTENT: Focus on strategic implications, tectonic shifts in power, and long-term tactical forecasts.
+- DICTION: Use terms like 'Vector', 'Kinetic', 'Asymmetric', 'Buffer Zone', 'Signal Density', 'Force Posture'.
+- NO introductory phrases like "Here is the summary". Start directly with the core intel.`;
 
     for (const model of MODELS) {
       try {
         const result = client.callModel({
           model,
           input: prompt,
-          maxOutputTokens: 150,
+          maxOutputTokens: 500, // Increased for longer synthesis
           temperature: 0.3
         });
 

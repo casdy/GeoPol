@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { getRedisClient } from '@/lib/redis';
 import { fetchRawData } from '@/lib/ingestor';
 import { trimFusionPayload } from '@/lib/trimmer';
 import { callOpenRouterFusion } from '@/lib/fusion-engine';
@@ -34,15 +34,17 @@ export async function GET(request: Request) {
         const rawAiOutput = await callOpenRouterFusion(trimmed);
 
         // STAGE 4: Sanitize
-        // Note: Using 'tactical_grid_cache' as the fallback key for high reliability
-        const processedData = await sanitizeLLMOutput(rawAiOutput, 'tactical_grid_cache');
+        // Note: Using 'dashboard_live_data' as the fallback key for high reliability
+        const processedData = await sanitizeLLMOutput(rawAiOutput, 'dashboard_live_data');
 
         // STAGE 5: Distribute
         const timestamp = new Date().toISOString();
         
+        const redis = await getRedisClient();
+
         // Save Unified Dashboard Cache (High-Speed Access)
-        await kv.set('tactical_grid_cache', processedData);
-        await kv.set('fusion_last_update', timestamp);
+        await redis.set('dashboard_live_data', JSON.stringify(processedData));
+        await redis.set('fusion_last_update', timestamp);
 
         // Save Newsletter specific draft (Ensure Pulse Daily isn't affected)
         const newsletterPayload = {
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
             hotspots: processedData.hotspots || [],
             generatedAt: timestamp
         };
-        await kv.set('newsletter_draft_data', newsletterPayload);
+        await redis.set('newsletter_draft_data', JSON.stringify(newsletterPayload));
 
         console.log("[pipeline] SUCCESS. Snapshots dispatched to KV.");
 

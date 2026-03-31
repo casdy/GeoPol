@@ -9,14 +9,51 @@ export interface RawFusionPayload {
 }
 
 /**
+ * String Similarity (Jaccard Index)
+ */
+function getJaccardSimilarity(s1: string, s2: string): number {
+    const tokenize = (str: string) => {
+        return new Set(
+            str.toLowerCase()
+               .replace(/[^\w\s]/g, '')
+               .split(/\s+/)
+               .filter(w => w.length > 2)
+        );
+    };
+    const set1 = tokenize(s1);
+    const set2 = tokenize(s2);
+    let intersection = 0;
+    for (const w of set1) {
+        if (set2.has(w)) intersection++;
+    }
+    const union = set1.size + set2.size - intersection;
+    if (union === 0) return 0;
+    return intersection / union;
+}
+
+/**
+ * Deduplicate news arrays by filtering out items sharing >60% word overlap.
+ */
+export function deduplicateNews(articles: Article[]): Article[] {
+    const unique: Article[] = [];
+    for (const art of articles) {
+        if (!art || !art.title) continue;
+        const isDup = unique.some(existing => getJaccardSimilarity(art.title, existing.title) > 0.6);
+        if (!isDup) unique.push(art);
+    }
+    return unique;
+}
+
+/**
  * Fusion Trimmer Engine (V2)
  * 
  * Strictly trims and sanitizes data to stay within ~8k token limits
  * for free-tier LLM models (OpenRouter/Gemini).
  */
 export function trimFusionPayload(payload: RawFusionPayload) {
-    // 1. Limit News to TOP 20 (Target: ~4,000 chars)
-    const trimmedNews = (payload.news || []).slice(0, 20).map(art => ({
+    // 1. Deduplicate News and Limit to TOP 20 (Target: ~4,000 chars)
+    const uniqueNews = deduplicateNews(payload.news || []);
+    const trimmedNews = uniqueNews.slice(0, 20).map(art => ({
         title: sanitizeText(art.title).substring(0, 100),
         summary: sanitizeText(art.description || art.summary || '').substring(0, 120),
         source: art.source
@@ -42,10 +79,10 @@ export function trimFusionPayload(payload: RawFusionPayload) {
         ts: payload.timestamp
     };
 
-    // Final Safety Check: Stringify and check length
+    // Final Safety Check: Stringify and check length (Target ~25k chars max for 8k tokens)
     const jsonStr = JSON.stringify(finalPayload);
-    if (jsonStr.length > 15000) { // Approx 6,000-7,000 tokens safely
-        console.warn("[trimmer] Payload still too large, aggressive emergency truncate.");
+    if (jsonStr.length > 25000) {
+        console.warn("[trimmer] Payload still too large (>25k chars), aggressive emergency truncate.");
         return {
             ...finalPayload,
             n: finalPayload.n.slice(0, 10) // Cut news in half again

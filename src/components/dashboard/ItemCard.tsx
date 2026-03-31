@@ -31,7 +31,7 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
         compact: 'h-32',
         'text-only': 'hidden',
         'tactical': 'hidden',
-        'tactical-image': 'w-24 h-24 shrink-0'
+        'tactical-image': 'w-12 h-12 shrink-0 rounded-sm'
     };
     
     const titleSizes = {
@@ -40,7 +40,7 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
         compact: 'text-base md:text-lg font-semibold mb-2 leading-tight',
         'text-only': 'text-[20px] md:text-[24px] font-bold mb-2 hover:underline underline-offset-4 leading-tight',
         'tactical': 'text-sm md:text-base font-semibold mb-1 leading-snug',
-        'tactical-image': 'text-[13px] md:text-[14px] font-semibold leading-snug line-clamp-2'
+        'tactical-image': 'text-[11px] md:text-xs font-semibold leading-snug line-clamp-2 text-slate-50'
     };
 
     const isTextOnly = variant === 'text-only';
@@ -54,10 +54,10 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleClick}
-            className="group flex items-start gap-3 px-3 py-2.5 border-b border-neutral-800/40 hover:bg-neutral-800/30 transition-all duration-200 cursor-pointer overflow-hidden"
+            className="group flex items-start gap-2 p-2 border-b border-neutral-800/40 hover:bg-neutral-800/30 transition-all duration-200 cursor-pointer overflow-hidden"
         >
             {showTacticalImage && (
-                <div className="w-24 h-24 shrink-0 bg-neutral-950 border border-neutral-800/50 overflow-hidden rounded-sm relative">
+                <div className="w-12 h-12 shrink-0 bg-neutral-950 border border-neutral-800/50 overflow-hidden rounded-sm relative">
                     {item.image ? (
                         <img 
                             src={`/api/proxy/image?url=${encodeURIComponent(item.image)}`} 
@@ -75,22 +75,18 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
                     </div>
                 </div>
             )}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-orange-500 font-sans shrink-0">{item.source}</span>
+            <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
+                    <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider text-orange-500 font-semibold shrink-0">{item.source}</span>
                     {item.tags?.slice(0, 1).map((tag) => (
-                        <span key={tag} className="text-[9px] uppercase tracking-wider px-1 py-0.5 border border-neutral-700/50 text-neutral-500 font-sans">{tag}</span>
+                        <span key={tag} className="text-[8px] md:text-[9px] font-mono uppercase tracking-wider px-1 py-0.5 text-slate-400 truncate border border-neutral-700/50 rounded-sm">{tag}</span>
                     ))}
                 </div>
-                <h3 className={`text-neutral-200 group-hover:text-amber-500 transition-colors ${titleSizes[variant]}`}>
+                <h3 className={`group-hover:text-amber-500 transition-colors ${titleSizes[variant]}`}>
                     {item.title}
                 </h3>
-                <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
-                    <Clock className="w-2.5 h-2.5 text-neutral-700 shrink-0" />
-                    <span className="text-[10px] text-neutral-600 font-sans tracking-wide truncate">{formatDate(item.publishedAt)}</span>
-                </div>
             </div>
-            <ExternalLink className="w-3 h-3 text-neutral-700 group-hover:text-orange-500 transition-colors mt-1 shrink-0" />
+            <ExternalLink className="w-3 h-3 text-neutral-700 group-hover:text-orange-500 transition-colors mt-1 shrink-0 hidden sm:block" />
         </a>
       );
     }
@@ -165,13 +161,13 @@ export function ItemCard({ item, onPlay, variant = 'default', hideTitle = false 
 
                 {!hideTitle && (
                     <div className="flex flex-col flex-grow">
-                        <h3 className={`text-neutral-200 group-hover:text-amber-500 transition-colors font-sans ${titleSizes[variant as keyof typeof titleSizes]}`}>
+                        <h3 className={`group-hover:text-amber-500 transition-colors font-sans ${titleSizes[variant as keyof typeof titleSizes]} text-slate-50`}>
                             {item.title}
                         </h3>
                         {!isTextOnly && item.description && (
-                            <div className="mt-1 mb-4 border-l-2 border-orange-500/30 pl-3">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-orange-500/80 mb-1 block">Intelligence Briefing</span>
-                                <p className="text-xs text-neutral-400 font-sans line-clamp-2 leading-relaxed italic">
+                            <div className="mt-1 mb-2 border-l-2 border-orange-500/30 pl-3">
+                                <span className="text-[10px] md:text-[11px] font-semibold font-mono uppercase tracking-wider text-slate-400 mb-0.5 block">Intelligence Briefing</span>
+                                <p className="text-xs leading-snug text-slate-200 line-clamp-2">
                                     {item.summary || item.description}
                                 </p>
                             </div>

@@ -18,6 +18,7 @@ A high-density situational awareness dashboard built with **Next.js 15**, aggreg
 | **Strategic Theater Map** | Interactive tactical map with live overlays (NASA EONET, OpenSky, USGS Seismology) |
 | **Crisis Mode** | Instant Red Alert override re-theming the terminal for high-intensity monitoring |
 | **Intelligence Briefing** | AI-generated summaries for localized global events with bias-detection metadata |
+| **Modular Layout** | Customizable, draggable, and resizable interface slots with persistent local state |
 
 ## 🛠 Tech Stack
 
@@ -76,6 +77,10 @@ Ensure these are set in your Vercel Dashboard:
 ### Why this is Secure:
 - **Zero Exposed Keys**: The browser never sees your Protomaps key. All requests for vector tiles are proxied through server-side routes.
 - **Domain Restriction**: Added another layer of protection by routing all tactical assets through internal API proxies.
+
+- **Layout Modularization**: Responsive vertical resizer for the media box and a drag-and-swap slot system for deep customization.
+- **Map Stabilization**: Robust font rendering via JSDelivr CDN and hardened Tile Proxy security.
+- **Persistence**: Layout configurations and tactical data states cached locally for consistent monitoring sessions.
 
 ## 🧪 Intelligence Verification (Testing)
 

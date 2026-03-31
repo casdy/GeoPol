@@ -141,7 +141,7 @@ export default function GlobalCamGrid({ onOverrideClick }: { onOverrideClick?: (
 
             {/* Scrollable Grid Container */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-min">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-2 xl:grid-cols-2 md:gap-4 auto-rows-min">
                     {selectedCams.map((cam) => (
                         <CameraFeed key={cam.id} cam={cam} onClick={() => setSelectedCam(cam)} />
                     ))}

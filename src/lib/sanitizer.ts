@@ -5,7 +5,7 @@
  * Provides automated fallback to Vercel KV checkpoints.
  */
 
-import { kv } from '@vercel/kv';
+import { getRedisClient } from './redis';
 
 export async function sanitizeLLMOutput(rawText: string, fallbackKey: string = 'dashboard_live_data'): Promise<any> {
     try {
@@ -36,7 +36,12 @@ export async function sanitizeLLMOutput(rawText: string, fallbackKey: string = '
 
     // 4. Final Fallback: Reverting to the previous 8-hour snapshot from Vercel KV
     console.warn(`[sanitizer] Critical Hallucination Detected. Falling back to KV [${fallbackKey}].`);
-    const backup = await kv.get(fallbackKey);
+    const redis = await getRedisClient();
+    const backupStr = await redis.get(fallbackKey);
+    let backup = null;
+    if (backupStr) {
+        try { backup = JSON.parse(backupStr); } catch(e) {}
+    }
     
     return backup || { 
         status: "MONITORING", 

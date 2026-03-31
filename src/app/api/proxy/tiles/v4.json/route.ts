@@ -1,13 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const apiKey = process.env.PROTOMAPS_API_KEY;
   if (!apiKey) {
+    console.error('[TileProxy] PROTOMAPS_API_KEY is missing from environment variables.');
     return NextResponse.json({ error: 'PROTOMAPS_API_KEY not configured' }, { status: 500 });
   }
 
+  // Use the modern Next.js way to determine the absolute origin
+  const baseUrl = request.nextUrl.origin;
+
   try {
+    const requestOrigin = request.headers.get('origin') || process.env.GEOPOL_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`https://api.protomaps.com/tiles/v4.json?key=${apiKey}`, {
+      headers: {
+        'Origin': requestOrigin,
+        'Referer': requestOrigin
+      },
       next: { revalidate: 3600 } // Cache metadata for 1 hour
     });
 
@@ -15,12 +24,11 @@ export async function GET() {
     
     const data = await response.json();
 
-    // Rewrite tile URLs to point to our local proxy
-    // Original: https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=...
-    // New: /api/proxy/tiles/{z}/{x}/{y}
+    // Rewrite tile URLs to point to our local proxy with ABSOLUTE paths
+    // MapLibre requires absolute URLs in the tiles array for stable loading
     if (data.tiles) {
       data.tiles = [
-        `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/proxy/tiles/{z}/{x}/{y}`
+        `${baseUrl}/api/proxy/tiles/{z}/{x}/{y}`
       ];
     }
 

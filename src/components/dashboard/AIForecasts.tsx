@@ -38,7 +38,7 @@ export default function AIForecasts({ metrics }: { metrics?: ForecastMetric[] })
   return (
     <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-4 shadow-lg h-full flex flex-col">
       <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-        <h3 className="uppercase font-sans text-xs text-slate-400 font-bold tracking-widest">
+        <h3 className="uppercase font-mono text-xs text-slate-400 font-bold tracking-widest">
             AI Probability Forecasts
         </h3>
         <Target className="w-3.5 h-3.5 text-slate-600" />
@@ -63,23 +63,23 @@ export default function AIForecasts({ metrics }: { metrics?: ForecastMetric[] })
       <div className="space-y-4">
         {filtered.map((item, idx) => (
           <div key={idx} className="space-y-1.5 group">
-            <p className="text-[10px] font-sans text-slate-300 uppercase tracking-tight group-hover:text-blue-400 transition-colors">
+            <p className="text-[10px] font-mono text-slate-300 uppercase tracking-tight group-hover:text-emerald-400 transition-colors">
               {item.q}
             </p>
             <div className="h-1.5 w-full bg-slate-950/80 rounded-full overflow-hidden flex border border-slate-800/50">
                 <div 
                     title={`YES: ${item.yes}%`}
                     style={{ width: `${item.yes}%` }} 
-                    className="h-full bg-green-600 transition-all duration-1000"
+                    className="h-full bg-emerald-500 transition-all duration-1000"
                 />
                 <div 
                     title={`NO: ${item.no}%`}
                     style={{ width: `${item.no}%` }} 
-                    className="h-full bg-red-900 transition-all duration-1000"
+                    className="h-full bg-red-500 transition-all duration-1000"
                 />
             </div>
-            <div className="flex justify-between font-sans text-[8px] font-black tracking-widest px-0.5">
-                <span className="text-green-500 uppercase">YES {item.yes}%</span>
+            <div className="flex justify-between font-mono text-[8px] font-black tracking-widest px-0.5">
+                <span className="text-emerald-500 uppercase">YES {item.yes}%</span>
                 <span className="text-red-500 uppercase">NO {item.no}%</span>
             </div>
           </div>

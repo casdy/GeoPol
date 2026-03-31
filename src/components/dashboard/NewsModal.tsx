@@ -9,12 +9,17 @@ interface NewsModalProps {
     article: Article | null;
     onClose: () => void;
     isLiveInsight?: boolean;
+    isCrisis?: boolean;
 }
 
 import PaywallModal from './PaywallModal';
 import NewsletterForm from '@/components/shared/NewsletterForm';
 
-export default function NewsModal({ article, onClose, isLiveInsight = false }: NewsModalProps) {
+export default function NewsModal({ article, onClose, isLiveInsight = false, isCrisis = false }: NewsModalProps) {
+    const theme = isCrisis 
+        ? { accent: 'text-red-500', bgAccent: 'bg-red-500', border: 'border-red-500/30', bg: 'bg-red-950/20', hover: 'hover:bg-red-600' }
+        : { accent: 'text-orange-500', bgAccent: 'bg-orange-500', border: 'border-orange-500/30', bg: 'bg-orange-950/20', hover: 'hover:bg-orange-600' };
+
     const [isPaywallOpen, setIsPaywallOpen] = useState(false);
     const [hasAccess, setHasAccess] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
@@ -30,25 +35,30 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
         const mainPoints = art.description || art.summary || "Current data stream provides limited descriptive metadata.";
         
         return (
-            <div className="space-y-4">
-                <div className="border border-slate-800 bg-slate-900/30 p-4 rounded-sm mb-4">
-                  <div className="grid grid-cols-2 gap-3 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <div><span className="text-cyan-500/50">REPORT_ID:</span> GP-{Math.floor(1000 + Math.random() * 9000)}</div>
-                    <div><span className="text-cyan-500/50">TIMESTAMP:</span> {dateStr}</div>
-                    <div><span className="text-cyan-500/50">SUBJECT:</span> {art.title.slice(0, 30)}...</div>
-                    <div><span className="text-cyan-500/50">SOURCE:</span> {sourceName}</div>
+            <div className="space-y-6">
+                <div className="border border-slate-800 bg-black/40 p-5 rounded-sm mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+                    <div><span className={`${theme.accent}/50`}>REPORT_ID:</span> GP-{Math.floor(1000 + Math.random() * 9000)}-ALPHA</div>
+                    <div><span className={`${theme.accent}/50`}>TIMESTAMP:</span> {dateStr}</div>
+                    <div><span className={`${theme.accent}/50`}>SUBJECT:</span> {art.title.slice(0, 40)}</div>
+                    <div><span className={`${theme.accent}/50`}>SOURCE:</span> {sourceName}</div>
                   </div>
                 </div>
 
-                <div className="space-y-4 text-slate-300 font-serif leading-relaxed text-[17px]">
+                <div className="space-y-6 text-slate-300 font-serif leading-relaxed text-[17px]">
                     <p>
-                        <span className="text-cyan-500 font-mono font-black tracking-[0.3em] text-[11px] block mb-2">[SUMMARY]</span>
-                        Intelligence assets from <span className="text-white border-b border-white/20">{art.source}</span> have released a critical SITREP regarding <span className="text-white italic">"{art.title}"</span>. Initial data ingestion indicates that {mainPoints.charAt(0).toLowerCase() + mainPoints.slice(1)} This development marks a significant shift in current sector dynamics.
+                        <span className={`${theme.accent} font-mono font-black tracking-[0.3em] text-[11px] block mb-3`}>[SUMMARY]</span>
+                        Intelligence assets from <span className="text-white border-b border-white/20 font-bold">{art.source}</span> have issued a high-priority SITREP regarding <span className="text-white italic">"{art.title}"</span>. Initial telemetry indicates {mainPoints.charAt(0).toLowerCase() + mainPoints.slice(1)} This development represents a critical pivot point in current sector stability and requires persistent monitoring.
                     </p>
 
-                    <p className="pt-4 border-t border-slate-800/50">
-                        <span className="text-orange-500 font-mono font-black tracking-[0.3em] text-[11px] block mb-2">[STRATEGIC ASSESSMENT]</span>
-                        The current vector suggests that the implications of this event extend beyond immediate news cycles. Analyst consensus identifies this as a high-priority intelligence stream requiring immediate tactical observation and cross-referencing with existing geopolitical baselines to determine long-term stability impact.
+                    <p className="pt-6 border-t border-slate-800/50">
+                        <span className={`${theme.accent} font-mono font-black tracking-[0.3em] text-[11px] block mb-3`}>[STRATEGIC ASSESSMENT]</span>
+                        The emerging vector suggests that the implications of this event will resonate beyond immediate news cycles, potentially disrupting established regional frameworks. Analyst consensus identifies this as a high-fidelity intelligence stream that likely signals a broader shift in geopolitical alignment, requiring immediate cross-referencing with historical baselines.
+                    </p>
+
+                    <p className="pt-6 border-t border-slate-800/50">
+                        <span className={`${theme.accent} font-mono font-black tracking-[0.3em] text-[11px] block mb-3`}>[TACTICAL FORECAST]</span>
+                        Expect increased signal density in adjacent sectors over the next 48-72 hours. Field units should prepare for asymmetric shifts in local force posture and potential kinetic escalations if diplomatic buffers continue to erode. Maintain high-readiness status for all regional monitoring nodes.
                     </p>
                 </div>
             </div>
@@ -126,12 +136,12 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                        className="bg-slate-950 border-t md:border border-slate-800 w-full max-w-5xl md:rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col h-[100dvh] md:h-auto md:max-h-[92vh] overflow-hidden relative"
+                        className="bg-slate-950 border-t md:border border-slate-800 w-full max-w-5xl md:rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col h-[100dvh] md:h-auto md:max-h-[92vh] overflow-y-auto md:overflow-hidden relative custom-scrollbar"
                     >
                         {/* CLOSE BUTTON */}
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 z-50 bg-slate-900/80 hover:bg-orange-600 text-white p-2.5 rounded-sm backdrop-blur-md transition-all border border-slate-700 hover:border-orange-500/50 min-w-[44px] min-h-[44px] flex items-center justify-center group"
+                            className={`absolute top-4 right-4 z-50 bg-slate-900/80 ${theme.hover} text-white p-2.5 rounded-sm backdrop-blur-md transition-all border border-slate-700 hover:border-white/20 min-w-[44px] min-h-[44px] flex items-center justify-center group`}
                         >
                             <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                         </button>
@@ -150,8 +160,8 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
                                             {/* SCANNING OVERLAY */}
-                                            <div className="absolute inset-0 bg-cyan-500/5 pointer-events-none overflow-hidden">
-                                                <div className="w-full h-[1px] bg-cyan-500/20 absolute top-0 left-0 animate-[scan_4s_linear_infinite]" />
+                                            <div className={`absolute inset-0 ${theme.bg} pointer-events-none overflow-hidden`}>
+                                                <div className={`w-full h-[1px] ${theme.bgAccent}/30 absolute top-0 left-0 animate-[scan_4s_linear_infinite]`} />
                                             </div>
                                         </>
                                     ) : (
@@ -160,7 +170,7 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                                         </div>
                                     )}
                                     <div className="absolute top-4 left-4 flex flex-col gap-1">
-                                        <div className="px-2 py-0.5 bg-cyan-600 text-white text-[8px] font-black uppercase tracking-[0.3em] rounded-[1px] shadow-lg">
+                                        <div className={`px-2 py-0.5 ${theme.bgAccent} text-white text-[8px] font-black uppercase tracking-[0.3em] rounded-[1px] shadow-lg`}>
                                             LIVE_FEED_STABLE
                                         </div>
                                         <div className="px-2 py-0.5 bg-black/60 text-slate-400 text-[8px] font-mono uppercase tracking-widest border border-slate-700/50 backdrop-blur-md">
@@ -173,7 +183,7 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                                     <div className="space-y-2">
                                         <h4 className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-[0.3em]">Attribution Domain</h4>
                                         <div className="p-3 bg-slate-900/40 border border-slate-800 rounded-sm flex items-center gap-3">
-                                            <div className="w-8 h-8 flex items-center justify-center bg-slate-800 text-cyan-400 rounded-sm">
+                                            <div className={`w-8 h-8 flex items-center justify-center bg-slate-800 ${theme.accent} rounded-sm`}>
                                                 <Globe className="w-4 h-4" />
                                             </div>
                                             <div>
@@ -196,7 +206,7 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                                             </div>
                                             <div className="flex items-center justify-between text-[10px] font-mono py-2">
                                                 <span className="text-slate-600 uppercase">Sector_Analysis</span>
-                                                <span className="text-cyan-500">COMPLETE</span>
+                                                <span className={theme.accent}>COMPLETE</span>
                                             </div>
                                         </div>
                                     </div>
@@ -208,7 +218,7 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                             </div>
 
                             {/* RIGHT SIDE: CORE INTEL CONTENT */}
-                            <div className="flex-1 flex flex-col bg-slate-950 overflow-y-auto custom-scrollbar p-6 md:p-10">
+                            <div className="flex-1 flex flex-col bg-slate-950 p-6 md:p-10">
                                 
                                 {/* TAGS */}
                                 <div className="flex flex-wrap gap-2 mb-6">
@@ -229,17 +239,17 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
 
                                 {/* AI SYNTHESIS BOX */}
                                 <div className="mb-10 relative group">
-                                    <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-orange-500/20 rounded-sm blur opacity-25 group-hover:opacity-50 transition duration-1000" />
-                                    <div className="relative border border-cyan-500/30 bg-cyan-950/20 p-6 rounded-sm">
+                                    <div className={`absolute -inset-1 bg-gradient-to-r ${isCrisis ? 'from-red-500/20 to-orange-500/20' : 'from-orange-500/20 to-amber-500/20'} rounded-sm blur opacity-25 group-hover:opacity-50 transition duration-1000`} />
+                                    <div className={`relative border ${theme.border} ${theme.bg} p-6 rounded-sm`}>
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-2">
-                                                <Radar className="w-4 h-4 text-cyan-400 animate-pulse" />
-                                                <h3 className="text-[10px] font-black font-mono text-cyan-400 uppercase tracking-[0.3em]">
+                                                <Radar className={`w-4 h-4 ${theme.accent} animate-pulse`} />
+                                                <h3 className={`text-[10px] font-black font-mono ${theme.accent} uppercase tracking-[0.3em]`}>
                                                     Neural Synthesis Engine V4.2
                                                 </h3>
                                             </div>
                                             {isSummarizing && (
-                                                <div className="text-[9px] font-mono text-cyan-500/60 animate-pulse flex items-center gap-1">
+                                                <div className={`text-[9px] font-mono ${theme.accent}/60 animate-pulse flex items-center gap-1`}>
                                                     <Loader2 className="w-3 h-3 animate-spin" />
                                                     DECRYPTING...
                                                 </div>
@@ -280,7 +290,7 @@ export default function NewsModal({ article, onClose, isLiveInsight = false }: N
                                         href={article.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex-1 flex items-center justify-between px-6 py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] group"
+                                        className={`flex-1 flex items-center justify-between px-6 py-4 ${isCrisis ? 'bg-red-600 hover:bg-red-500 shadow-red-500/30' : 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/30'} text-white font-black uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] group`}
                                     >
                                         <span>Read Full Source File</span>
                                         <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

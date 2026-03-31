@@ -261,7 +261,7 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
       <div className={`grid ${isSplitScreen ? 'grid-cols-2' : 'grid-cols-1'} bg-black gap-[1px]`}>
         <div className="relative aspect-video group">
           <iframe
-            src={`${activeChannel.youtubeUrl}${activeChannel.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&rel=0`}
+            src={`${activeChannel.youtubeUrl}${activeChannel.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&rel=0&playsinline=1`}
             title={`Primary: ${activeChannel.title}`}
             className="w-full h-full grayscale"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -275,7 +275,7 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
         {isSplitScreen && (
           <div className="relative aspect-video group animate-in slide-in-from-right duration-500">
             <iframe
-              src={`${secondaryChannel.youtubeUrl}${secondaryChannel.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&rel=0`}
+              src={`${secondaryChannel.youtubeUrl}${secondaryChannel.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&rel=0&playsinline=1`}
               title={`Secondary: ${secondaryChannel.title}`}
               className="w-full h-full grayscale"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -309,7 +309,7 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
       </div>
 
       {/* 4-SPLIT SURVEILLANCE GRID (BOTTOM) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 bg-black border-t border-slate-800 gap-[1px]">
+      <div className="grid grid-cols-2 bg-black border-t border-slate-800 gap-[1px]">
         {surveillanceChannels.map((cam, idx) => (
           <button 
             key={cam.id} 
@@ -317,7 +317,7 @@ export default React.memo(function LiveNewsViewer({ onOverrideClick }: { onOverr
             className="relative aspect-video group overflow-hidden bg-slate-950 text-left border-none outline-none focus:ring-2 focus:ring-cyan-500/50 z-10"
           >
             <iframe
-              src={`${cam.youtubeUrl}${cam.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=0&modestbranding=1`}
+              src={`${cam.youtubeUrl}${cam.youtubeUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=0&playsinline=1&modestbranding=1`}
               className="w-full h-full opacity-60 group-hover:opacity-100 transition-all duration-700 pointer-events-none"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
             />

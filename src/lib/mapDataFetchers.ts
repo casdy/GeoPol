@@ -39,7 +39,9 @@ export async function fetchNasaEonet(): Promise<GeoJSON.FeatureCollection> {
       features,
     };
   } catch (error) {
-    console.error('Error fetching NASA EONET data:', error);
+    // If the error is a "Failed to fetch" (TypeError), it means the server is likely unreachable
+    // We return a valid empty FeatureCollection to keep the map engine stable
+    console.error('NASA EONET Proxy Error (Likely server-side):', error instanceof Error ? error.message : 'Unknown Network Error');
     return { type: 'FeatureCollection', features: [] };
   }
 }
@@ -56,9 +58,9 @@ export async function fetchOpenSky(): Promise<GeoJSON.FeatureCollection> {
     if (!response.ok) throw new Error('OpenSky Proxy Unreachable');
     const data = await response.json();
 
-    if (!data.states) return { type: 'FeatureCollection', features: [] };
+    if (!data || !data.states) return { type: 'FeatureCollection', features: [] };
 
-    const features: GeoJSON.Feature[] = data.states.map((state: any[]) => {
+    const features: GeoJSON.Feature[] = data.states.slice(0, 500).map((state: any[]) => {
       const lon = state[5];
       const lat = state[6];
       const heading = state[10] || 0; // True track in decimal degrees clockwise from north
@@ -87,7 +89,7 @@ export async function fetchOpenSky(): Promise<GeoJSON.FeatureCollection> {
       features,
     };
   } catch (error) {
-    console.error('Error fetching OpenSky data:', error);
+    console.error('OpenSky Proxy Error (Likely server-side):', error instanceof Error ? error.message : 'Unknown Network Error');
     return { type: 'FeatureCollection', features: [] };
   }
 }

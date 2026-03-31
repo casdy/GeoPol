@@ -13,8 +13,13 @@ export async function GET(
 
   try {
     const tileUrl = `https://api.protomaps.com/tiles/v4/${z}/${x}/${y}.mvt?key=${apiKey}`;
+    const requestOrigin = request.headers.get('origin') || process.env.GEOPOL_BASE_URL || 'http://localhost:3000';
     
     const response = await fetch(tileUrl, {
+      headers: {
+        'Origin': requestOrigin,
+        'Referer': requestOrigin
+      },
       next: { revalidate: 86400 } // Cache tiles for 24 hours (mostly static)
     });
 
@@ -30,12 +35,14 @@ export async function GET(
       headers: {
         'Content-Type': 'application/x-protobuf',
         'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'X-Content-Type-Options': 'nosniff'
       }
     });
 
   } catch (error) {
     console.error(`Error proxying tile ${z}/${x}/${y}:`, error);
-    return NextResponse.json({ error: 'Failed to fetch map tile' }, { status: 500 });
+    // Return 204 No Content for tile errors to keep the map stable
+    return new Response(null, { status: 204 });
   }
 }

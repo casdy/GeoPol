@@ -52,6 +52,8 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
+  gap: 1.5rem; /* gap-6: thumb space for mobile */
+  padding: 1rem; /* p-4 for consistency */
 }
 
 /* Mobile: stacked layout */
@@ -59,15 +61,17 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* Prevent layout shifts */
 }
 
 .command-center-map-container {
   width: 100%;
-  height: 40vh;
-  min-height: 250px;
+  height: 400px; /* Hardened height for mobile */
   position: relative;
   background: #111;
   border-bottom: 1px solid #262626;
+  overflow: hidden;
+  border-radius: 0.75rem; /* rounded-xl */
 }
 
 .command-center-left-feed {
@@ -87,6 +91,7 @@ body {
   flex: 1;
   min-height: 0;
   border-top: 1px solid #262626;
+  overflow: hidden; /* Prevent layout shifts */
 }
 
 .command-center-video {
@@ -105,8 +110,10 @@ body {
 @media (min-width: 1024px) {
   .command-center-grid {
     flex-direction: row;
+    gap: 0;
+    padding: 0;
   }
-
+ 
   .command-center-left-column {
     width: 65%;
     height: 100%;
@@ -114,8 +121,10 @@ body {
   }
 
   .command-center-map-container {
-    height: 60vh;
-    min-height: 500px;
+    height: 600px; /* Hardened height for desktop */
+    min-height: 600px;
+    border-bottom: 1px solid #262626;
+    border-radius: 0; /* Reset for grid view */
   }
 
   .command-center-left-feed {

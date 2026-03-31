@@ -90,20 +90,35 @@ function DashboardContent() {
   });
 
   const [tacticalData, setTacticalData] = useState<any>(null);
+  
+  // Layout Slot Configuration for Drag & Drop
+  const [slotConfig, setSlotConfig] = useState<Record<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('geopol-slots');
+      return saved ? JSON.parse(saved) : { LB: 'intel', RT: 'video', RB: 'metrics' };
+    }
+    return { LB: 'intel', RT: 'video', RB: 'metrics' };
+  });
+
+  const swapSlots = (from: string, to: string) => {
+    if (from === to) return;
+    setSlotConfig(prev => {
+      const next = { ...prev };
+      const fromComponent = next[from];
+      const toComponent = next[to];
+      next[from] = toComponent;
+      next[to] = fromComponent;
+      localStorage.setItem('geopol-slots', JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchTacticalGrid = async () => {
       try {
-        const res = await fetch('/api/tactical-grid');
+        const res = await fetch('/api/geo-cache');
         const data = await res.json();
-        if (!data.error && data.intelFeed) {
-          const seen = new Set();
-          data.intelFeed = data.intelFeed.filter((item: any) => {
-            const txt = (item.text || item.title || "").toLowerCase().replace(/[^\w\s]/gi, '').trim();
-            if (seen.has(txt)) return false;
-            seen.add(txt);
-            return true;
-          });
+        if (data && data.status) {
           setTacticalData(data);
         }
       } catch (e) {
@@ -273,13 +288,14 @@ function DashboardContent() {
   const headerOffset = '92px';
 
   return (
-    <div className="max-w-[100vw] overflow-x-hidden xl:max-w-none xl:overflow-x-visible">
-      <main className={`min-h-screen ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans overflow-x-hidden`}>
+    <div className="min-h-screen lg:h-screen w-full flex flex-col overflow-x-hidden lg:overflow-hidden">
+      <main className={`flex flex-col flex-1 lg:min-h-0 ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans`}>
 
       <NewsModal 
         article={activeArticle} 
         onClose={() => setActiveArticle(null)} 
         isLiveInsight={isActiveLiveInsight}
+        isCrisis={isCrisisMode}
       />
 
       {/* Header */}
@@ -389,186 +405,184 @@ function DashboardContent() {
 
       {/* ═══ COMMAND CENTER CONTENT ═══ */}
       {category === 'surveillance' ? (
-        <div style={{ height: `calc(100vh - ${headerOffset})` }}>
+        <div className="flex-1 lg:min-h-0 lg:overflow-hidden relative">
           <GlobalCamGrid onOverrideClick={() => setIsAdminModalOpen(true)} />
         </div>
       ) : (
-        <CommandCenterLayout
-          headerHeight={headerOffset}
-          mapSlot={
-            <StrategicTheaterMap 
-              onRegionSelect={setRegion} 
-              selectedRegion={region} 
-              articles={allArticles} 
-              timeRange={timeRange}
-              onTimeRangeChange={setTimeRange}
-              isGoodNewsMode={isGoodNewsMode}
-              onCountrySelect={(iso: string) => {
-                const intel = getGeopoliticalIntelligence(allArticles);
-                if (intel[iso]) setSelectedCountryIntel(intel[iso]);
-              }}
-            />
-          }
-
-          leftBottomSlot={
-            <div className="flex flex-col h-full bg-[#050505]">
-              <div className="px-3 py-2 border-b border-neutral-800/50 bg-neutral-900/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
-                  <div className="flex items-center gap-2">
-                      <Radar className="w-3 h-3 text-orange-500 animate-pulse" />
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
-                        Strategic Intelligence
-                      </span>
-                  </div>
-              </div>
-              <div className="grid grid-cols-2 gap-[1px] bg-neutral-800/20">
-                  {isLoading ? (
-                    <>
-                      {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="bg-neutral-950 p-3 h-32">
-                          <ItemCardSkeleton variant="tactical-image" />
+        <div className="flex-1 lg:min-h-0 lg:overflow-hidden relative">
+          <CommandCenterLayout
+            mapSlot={
+              <StrategicTheaterMap 
+                onRegionSelect={setRegion} 
+                selectedRegion={region} 
+                articles={allArticles} 
+                timeRange={timeRange}
+                onTimeRangeChange={setTimeRange}
+                isGoodNewsMode={isGoodNewsMode}
+                onCountrySelect={(iso: string) => {
+                  const intel = getGeopoliticalIntelligence(allArticles);
+                  if (intel[iso]) setSelectedCountryIntel(intel[iso]);
+                }}
+              />
+            }
+            slotMapping={slotConfig}
+            onSwap={swapSlots}
+            intelComponent={
+              <div className="flex flex-col h-full bg-[#050505]">
+                <div className="px-3 py-2 border-b border-neutral-800/50 bg-neutral-900/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                    <div className="flex items-center gap-2">
+                        <Radar className="w-3 h-3 text-orange-500 animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
+                          Strategic Intelligence
+                        </span>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1 bg-neutral-800/20 p-1">
+                    {isLoading ? (
+                      <>
+                        {[1, 2, 3, 4].map(i => (
+                          <div key={i} className="bg-neutral-950 p-2 h-16">
+                            <ItemCardSkeleton variant="tactical-image" />
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      strategicArticles.map((article) => (
+                        <div key={article.id} className="item-card-anim bg-neutral-950 h-full">
+                          <ItemCard
+                            item={article}
+                            onPlay={(item) => {
+                              setIsActiveLiveInsight(false);
+                              setActiveArticle(item);
+                            }}
+                            variant="tactical-image"
+                          />
                         </div>
-                      ))}
-                    </>
-                  ) : (
-                    strategicArticles.map((article) => (
-                      <div key={article.id} className="item-card-anim bg-neutral-950 h-full">
-                        <ItemCard
-                          item={article}
-                        onPlay={(item) => {
-                          setIsActiveLiveInsight(false);
-                          setActiveArticle(item);
-                        }}
-                          variant="tactical-image"
+                      ))
+                    )}
+                </div>
+              </div>
+            }
+            videoComponent={
+              <LiveNewsViewer onOverrideClick={() => setIsAdminModalOpen(true)} />
+            }
+            metricsComponent={
+              <>
+                {/* Crisis Alert Banner */}
+                {isCrisisMode && (
+                  <div className="w-full bg-red-950/50 border-b border-red-500 p-2 text-center animate-pulse relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)]" />
+                    <h2 className="text-red-500 font-black tracking-[0.3em] text-[10px] uppercase relative z-10 font-mono">
+                      ⚠️ PRIORITY ALERT: MILITARY ACTION DETECTED ⚠️
+                    </h2>
+                  </div>
+                )}
+
+                <div className="px-3 py-2.5 border-b border-neutral-800/50 bg-neutral-950/80 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
+                      Tactical Metrics
+                    </span>
+                  </div>
+                  <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">
+                    Signal Strength: <span className="text-green-500">OPTIMAL</span>
+                  </div>
+                </div>
+
+                {/* Tactical Widgets Grid */}
+                <div className="h-full bg-neutral-950/20">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-3 auto-rows-min">
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <AIInsightsBrief content={tacticalData?.insights} />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <StrategicRiskGauge score={tacticalData?.globalRiskScore || 63} />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <StrategicPosture />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <AIForecasts metrics={tacticalData?.forecasts} />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <CountryInstability 
+                          countries={tacticalData?.instability} 
+                          onCountryClick={(nameOrIso) => {
+                            const intelArr = getGeopoliticalIntelligence(allArticles);
+                            const intel = intelArr[nameOrIso] || Object.values(intelArr).find(c => c.name.toLowerCase() === nameOrIso.toLowerCase());
+                            if (intel) setSelectedCountryIntel(intel);
+                          }}
                         />
                       </div>
-                    ))
-                  )}
-              </div>
-            </div>
-          }
-          videoSlot={
-            <LiveNewsViewer onOverrideClick={() => setIsAdminModalOpen(true)} />
-          }
-          feedSlot={
-            <>
-              {/* Crisis Alert Banner */}
-              {isCrisisMode && (
-                <div className="w-full bg-red-950/50 border-b border-red-500 p-2 text-center animate-pulse relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)]" />
-                  <h2 className="text-red-500 font-black tracking-[0.3em] text-[10px] uppercase relative z-10 font-mono">
-                    ⚠️ PRIORITY ALERT: MILITARY ACTION DETECTED ⚠️
-                  </h2>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <CyberThreatRadar />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <IntelFeed 
+                          items={tacticalData?.intelFeed} 
+                          onItemClick={(item) => {
+                            const intelMap = getGeopoliticalIntelligence(allArticles);
+                            const t = (item.text || item.title || "").toLowerCase();
+                            const iso = Object.keys(intelMap).find(idx => 
+                              t.includes(intelMap[idx].name.toLowerCase())
+                            );
+    
+                            if (iso) {
+                              setSelectedCountryIntel(intelMap[iso]);
+                            } else {
+                              setIsActiveLiveInsight(true);
+                              setActiveArticle({
+                                id: `intel-${Date.now()}`,
+                                title: item.text || item.title || 'Signal Analyzed',
+                                description: `Source: ${item.source}. Raw signal received via Tactical Data Fusion.`,
+                                url: '#',
+                                source: item.source,
+                                domain: 'intel.internal',
+                                publishedAt: new Date().toISOString(),
+                                biasMeta: {
+                                  sourceReliability: 'high',
+                                  ownershipType: 'unknown',
+                                  countryOfOrigin: 'Internal',
+                                  geopoliticalAlignment: 'western',
+                                  sensationalismScore: 0,
+                                  emotionallyLoadedLanguage: false
+                                },
+                                tags: ['LIVE_INTEL', item.badge || 'REPORT']
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<TacticalWidgetSkeleton />}>
+                      <div className="item-card-anim">
+                        <AviationStatusCard />
+                      </div>
+                    </Suspense>
+                  </div>
                 </div>
-              )}
-
-              <div className="px-3 py-2.5 border-b border-neutral-800/50 bg-neutral-950/80 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-3.5 h-3.5 text-orange-500" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 font-mono">
-                    Tactical Metrics
-                  </span>
-                </div>
-                <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">
-                  Signal Strength: <span className="text-green-500">OPTIMAL</span>
-                </div>
-              </div>
-
-              {/* Tactical Widgets Grid */}
-              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-3 bg-neutral-950/20 auto-rows-min">
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <AIInsightsBrief content={tacticalData?.insights} />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <StrategicRiskGauge score={tacticalData?.globalRiskScore || 63} />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <StrategicPosture />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <AIForecasts metrics={tacticalData?.forecasts} />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <CountryInstability 
-                      countries={tacticalData?.instability} 
-                      onCountryClick={(nameOrIso) => {
-                        const intelArr = getGeopoliticalIntelligence(allArticles);
-                        const intel = intelArr[nameOrIso] || Object.values(intelArr).find(c => c.name.toLowerCase() === nameOrIso.toLowerCase());
-                        if (intel) setSelectedCountryIntel(intel);
-                      }}
-                    />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <CyberThreatRadar />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <IntelFeed 
-                      items={tacticalData?.intelFeed} 
-                      onItemClick={(item) => {
-                        const intelMap = getGeopoliticalIntelligence(allArticles);
-                        const t = (item.text || item.title || "").toLowerCase();
-                        const iso = Object.keys(intelMap).find(idx => 
-                          t.includes(intelMap[idx].name.toLowerCase())
-                        );
-
-                        if (iso) {
-                          setSelectedCountryIntel(intelMap[iso]);
-                        } else {
-                          setIsActiveLiveInsight(true);
-                          setActiveArticle({
-                            id: `intel-${Date.now()}`,
-                            title: item.text || item.title || 'Signal Analyzed',
-                            description: `Source: ${item.source}. Raw signal received via Tactical Data Fusion.`,
-                            url: '#',
-                            source: item.source,
-                            domain: 'intel.internal',
-                            publishedAt: new Date().toISOString(),
-                            biasMeta: {
-                              sourceReliability: 'high',
-                              ownershipType: 'unknown',
-                              countryOfOrigin: 'Internal',
-                              geopoliticalAlignment: 'western',
-                              sensationalismScore: 0,
-                              emotionallyLoadedLanguage: false
-                            },
-                            tags: ['LIVE_INTEL', item.badge || 'REPORT']
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<TacticalWidgetSkeleton />}>
-                  <div className="item-card-anim">
-                    <AviationStatusCard />
-                  </div>
-                </Suspense>
-              </div>
-
-            </>
-          }
-        />
+              </>
+            }
+          />
+        </div>
       )}
 
-      {/* Scroll Sentinel for Footer Reveal */}
-      <div ref={sentinelRef} className="h-4 w-full" id="footer-sentinel" />
-
-      {/* Global Footer - Animated Slide Up */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-neutral-800 z-[100] transition-all duration-500 ease-out transform ${
-        isFooterVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'
-      }`}>
+      {/* Global Footer - Fixed at Bottom */}
+      <div className="bg-black/95 backdrop-blur-md border-t border-neutral-800 z-[100] flex-shrink-0">
         <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
       </div>
 

@@ -42,12 +42,12 @@ export default function NewsletterForm({ variant = 'default' }: NewsletterFormPr
           required
           suppressHydrationWarning={true}
           disabled={isPending}
-          className="flex-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 transition-all duration-200 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
+          className="flex-1 rounded-lg border border-slate-600/50 bg-slate-800/80 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 transition-all duration-200 focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={isPending}
-          className="group relative shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50"
+          className="group relative shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-orange-600 to-amber-500 px-5 py-2.5 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50"
         >
           {/* Hover shine effect */}
           <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
@@ -129,15 +129,15 @@ export default function NewsletterForm({ variant = 'default' }: NewsletterFormPr
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/60 p-6 backdrop-blur-sm">
+    <div className="relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-950/60 p-4 sm:p-6 backdrop-blur-sm w-full transition-all duration-300">
       {/* Background glow accent */}
-      <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-orange-500/5 blur-3xl" />
 
       {/* Header */}
       <div className="relative mb-4 flex items-center gap-2.5">
         <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-orange-500" />
         </span>
         <h3 className="text-sm font-bold tracking-[0.2em] text-slate-200 uppercase">
           Pulse Daily

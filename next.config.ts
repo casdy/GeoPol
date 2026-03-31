@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             // Basic CSP: Allow self, allow scripts/styles from self and strict inline (unsafe-inline used for simplicity in this demo due to Tailwind/Next dynamic styles, usually strict-dynamic is better but complex to setup)
             // We also allow images from placehold.co and youtube as used in the app.
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https: http:; media-src 'self' data:; font-src 'self' https://cdn.protomaps.com; frame-src 'self' https://www.youtube.com; connect-src 'self' https://newsapi.org https://www.googleapis.com https://api.resend.com https://api.protomaps.com https://cdn.protomaps.com; worker-src 'self' blob:;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https: http:; media-src 'self' data:; font-src 'self' https://cdn.protomaps.com https://protomaps.github.io https://demotiles.maplibre.org https://cdn.jsdelivr.net; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://newsapi.org https://www.googleapis.com https://api.resend.com https://api.protomaps.com https://cdn.protomaps.com https://protomaps.github.io https://demotiles.maplibre.org https://cdn.jsdelivr.net; worker-src 'self' blob:;"
           }
         ]
       }

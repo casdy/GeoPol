@@ -82,4 +82,8 @@ src_files.txt
 tests/*.json
 tests/*.txt
 tests/*.log
+daily checkin.md
 
+
+.vercel
+.env*.local

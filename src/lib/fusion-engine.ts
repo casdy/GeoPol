@@ -33,7 +33,7 @@ JSON SCHEMA:
 `;
 
 export async function callOpenRouterFusion(trimmedPayload: any) {
-    console.log("[fusion] Synthesizing tactical insights...");
+    console.log("[fusion] Synthesizing tactical insights via OpenRouter...");
     
     const prompt = `
     CURRENT DATA SNAPSHOT:
@@ -44,11 +44,35 @@ export async function callOpenRouterFusion(trimmedPayload: any) {
     `;
 
     try {
-        // We use generateText from ai-router which already handles fallbacks
-        // but we'll wrap it for fusion-specific logging and potential second-tier fallbacks if needed.
-        const response = await generateText(FUSION_SYSTEM_PROMPT + "\n\n" + prompt, true);
+        const apiKey = process.env.Open_Router;
+        if (!apiKey) throw new Error("Open_Router API key not configured in .env.local");
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "meta-llama/llama-3.1-8b-instruct",
+                messages: [
+                    { role: "system", content: FUSION_SYSTEM_PROMPT },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.2
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenRouter HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content;
         
-        return response;
+        if (!text) throw new Error("OpenRouter returned empty content");
+        
+        return text;
     } catch (e) {
         console.error("[fusion] AI synthesis failed:", e);
         throw e;

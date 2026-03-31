@@ -16,7 +16,7 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
       case 'VOLATILE': return 'text-orange-500';
       case 'UNSTABLE': return 'text-yellow-500';
       case 'STABLE': return 'text-green-500';
-      default: return 'text-cyan-500';
+      default: return 'text-orange-500';
     }
   };
 
@@ -26,7 +26,7 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
       case 'VOLATILE': return 'bg-orange-950/40 border-orange-500/30';
       case 'UNSTABLE': return 'bg-yellow-950/40 border-yellow-500/30';
       case 'STABLE': return 'bg-green-950/40 border-green-500/30';
-      default: return 'bg-cyan-950/40 border-cyan-500/30';
+      default: return 'bg-orange-950/40 border-orange-500/30';
     }
   };
 
@@ -37,7 +37,7 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col pointer-events-auto animate-in fade-in zoom-in duration-300 overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col pointer-events-auto animate-in fade-in zoom-in duration-300 overflow-y-auto md:overflow-hidden max-h-[100dvh] md:max-h-[85vh] custom-scrollbar">
         
         {/* Header Section */}
         <div className={`p-6 border-b flex items-center justify-between ${getStatusBg(intel.status)}`}>
@@ -56,7 +56,7 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
                   STATUS: {intel.status}
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono font-black uppercase tracking-[0.2em] flex items-center gap-1.5">
-                  <Activity className="w-3 h-3 text-cyan-500" />
+                  <Activity className="w-3 h-3 text-orange-500" />
                   RISK_INDEX: {intel.riskScore}%
                 </span>
               </div>
@@ -76,13 +76,13 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
           {/* Primary Intelligence Briefing */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
-              <Radar className="w-4 h-4 text-cyan-500 animate-pulse" />
+              <Radar className="w-4 h-4 text-orange-500 animate-pulse" />
               <h4 className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-slate-500 flex-1">
                 Strategic Intelligence Briefing
               </h4>
               <div className="h-[1px] bg-slate-800 flex-1" />
             </div>
-            <div className="relative pl-6 border-l-2 border-cyan-500/30 py-1">
+            <div className="relative pl-6 border-l-2 border-orange-500/30 py-1">
                 <h3 className="text-xl font-bold font-sans text-white leading-tight mb-4">
                     "{intel.topHeadline}"
                 </h3>
@@ -131,8 +131,8 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
 
           {/* Verification Protocol */}
           <section className="bg-slate-900/50 border border-slate-800 p-5 rounded-sm flex gap-5 items-start">
-            <div className="mt-1 bg-cyan-500/10 p-2 border border-cyan-500/20">
-                <Info className="w-5 h-5 text-cyan-400" />
+            <div className="mt-1 bg-orange-500/10 p-2 border border-orange-500/20">
+                <Info className="w-5 h-5 text-orange-400" />
             </div>
             <div className="space-y-2">
                 <h4 className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-slate-400">Tactical Verification Protocol</h4>
@@ -153,12 +153,12 @@ export default function LiveInsightModal({ intel, onClose }: LiveInsightModalPro
                 <div className="w-[1px] h-8 bg-slate-800" />
                 <div className="flex flex-col">
                     <span className="text-[8px] font-mono font-black text-slate-600 uppercase tracking-[0.3em]">Vector</span>
-                    <span className="text-[10px] font-mono font-bold text-cyan-500 italic animate-pulse">SYNC_LIVE</span>
+                    <span className="text-[10px] font-mono font-bold text-orange-500 italic animate-pulse">SYNC_LIVE</span>
                 </div>
             </div>
             <button 
                 onClick={onClose}
-                className="bg-white hover:bg-cyan-500 hover:text-white transition-all text-black text-[11px] font-black uppercase tracking-[0.2em] px-8 py-3 rounded-sm flex items-center gap-3 group active:scale-95 shadow-xl"
+                className="bg-white hover:bg-orange-500 hover:text-white transition-all text-black text-[11px] font-black uppercase tracking-[0.2em] px-8 py-3 rounded-sm flex items-center gap-3 group active:scale-95 shadow-xl"
             >
                 Acknowledge
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

@@ -64,7 +64,7 @@ const REGION_BOUNDS: Record<string, { center: [number, number]; zoom: number }> 
 function buildMapStyle(): maplibregl.StyleSpecification {
   return {
     version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    glyphs: "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@main/fonts/{fontstack}/{range}.pbf",
     sources: {
       protomaps: {
         type: 'vector',
@@ -130,6 +130,7 @@ export default function StrategicTheaterMap({
 
   const [isMounted, setIsMounted] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false); // True only after vector tiles settle
   const [isSplashActive, setIsSplashActive] = useState(true);
   const [splashPhase, setSplashPhase] = useState('INITIALIZING SATELLITE LINK...');
 
@@ -167,14 +168,14 @@ export default function StrategicTheaterMap({
 
   // ─── SPLASH LIFECYCLE ──────────────────────────────────────────
   useEffect(() => {
-    if (isMapReady && articles.length > 0) {
+    if (isMapLoaded) {
       setSplashPhase('SYSTEM_STABLE // SYNCING TACTICAL GRID...');
       const timer = setTimeout(() => {
         setIsSplashActive(false);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isMapReady, articles.length]);
+  }, [isMapLoaded]);
 
   const [showLegend, setShowLegend] = useState(false);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
@@ -210,7 +211,7 @@ export default function StrategicTheaterMap({
         });
         map.addLayer({
             id: 'nuclear-sites', type: 'symbol', source: 'nuclear-watch',
-            layout: { 'text-field': '☢', 'text-size': 20, 'text-allow-overlap': true, 'visibility': activeLayers.nuclear ? 'visible' : 'none' },
+            layout: { 'text-field': '☢', 'text-font': ['Noto Sans Regular'], 'text-size': 20, 'text-allow-overlap': true, 'visibility': activeLayers.nuclear ? 'visible' : 'none' },
             paint: { 'text-color': '#facc15', 'text-opacity-transition': transition }
         });
     }
@@ -327,7 +328,7 @@ export default function StrategicTheaterMap({
       map.addLayer({ id: 'aviation-cluster-count', type: 'symbol', source: 'opensky-aviation', filter: ['has', 'point_count'], layout: { 'text-field': '{point_count}', 'text-font': ['Noto Sans Regular'], 'text-size': 10, 'visibility': activeLayers.aviation ? 'visible' : 'none' }, paint: { 'text-color': '#cbd5e1', 'text-opacity-transition': transition } });
     }
     if (!map.getLayer('opensky-aviation')) {
-      map.addLayer({ id: 'opensky-aviation', type: 'symbol', source: 'opensky-aviation', filter: ['!', ['has', 'point_count']], layout: { 'text-field': '✈', 'text-size': 14, 'text-rotate': ['get', 'heading'], 'text-allow-overlap': true, 'visibility': activeLayers.aviation ? 'visible' : 'none' }, paint: { 'text-color': '#e2e8f0', 'text-opacity-transition': transition } });
+      map.addLayer({ id: 'opensky-aviation', type: 'symbol', source: 'opensky-aviation', filter: ['!', ['has', 'point_count']], layout: { 'text-field': '✈', 'text-font': ['Noto Sans Regular'], 'text-size': 14, 'text-rotate': ['get', 'heading'], 'text-allow-overlap': true, 'visibility': activeLayers.aviation ? 'visible' : 'none' }, paint: { 'text-color': '#e2e8f0', 'text-opacity-transition': transition } });
     }
 
     if (!map.getSource('prosperity-nodes')) {
@@ -369,19 +370,24 @@ export default function StrategicTheaterMap({
     }
   }, [articles, updateSource]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!mapRef.current || !isMapReady) return;
+  const fetchData = useCallback(async () => {
+    if (!mapRef.current || !isMapReady) return;
+    try {
       const [eonetData, cryptoAviationData] = await Promise.all([fetchNasaEonet(), fetchOpenSky()]);
       updateSource('nasa-eonet', eonetData);
       updateSource('opensky-aviation', cryptoAviationData);
-    };
+    } catch (e) {
+      console.warn('[MapData] Background fetch failed', e);
+    }
+  }, [isMapReady, updateSource]);
+
+  useEffect(() => {
     if (isMapReady) {
         fetchData();
         const interval = setInterval(fetchData, 60000);
         return () => clearInterval(interval);
     }
-  }, [isMapReady, updateSource]);
+  }, [fetchData, isMapReady]);
 
   useEffect(() => {
     let frameId: number;
@@ -413,6 +419,7 @@ export default function StrategicTheaterMap({
       center: REGION_BOUNDS[selectedRegion]?.center || [20, 20],
       zoom: REGION_BOUNDS[selectedRegion]?.zoom || 1.8,
       minZoom: 1.5, maxZoom: 12, attributionControl: false,
+      cooperativeGestures: true, // Prevents mobile scroll hijacking
     });
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'tactical-popup' });
     map.on('mousemove', (e) => {
@@ -466,11 +473,15 @@ export default function StrategicTheaterMap({
         map.on('mouseleave', 'conflict-country-fill', () => map.getCanvas().style.cursor = '');
     };
     map.on('styledata', () => { initTacticalLayers(map); setupLayerListeners(map); setIsMapReady(true); mapStyleLoadedRef.current = true; });
+    map.on('idle', () => {
+        // We use map.on('load') below instead to avoid network-level hang-ups
+    });
     map.on('load', () => {
         initTacticalLayers(map);
         setupLayerListeners(map);
         setIsMapReady(true);
         mapStyleLoadedRef.current = true;
+        setIsMapLoaded(true); // Instantly triggers the splash screen removal
         
         // Restore Native Navigation Controls (Zoom)
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -489,7 +500,10 @@ export default function StrategicTheaterMap({
   const regions: Region[] = ['Global', 'Middle East', 'Eastern Europe', 'Asia Pacific', 'Americas', 'Africa', 'Arctic', 'South Asia', 'Central Asia', 'Latin America'];
 
   return (
-    <div ref={containerRef} className="strategic-theater-map w-full h-full relative font-sans">
+    <div 
+      ref={containerRef} 
+      className="strategic-theater-map w-full h-[400px] lg:h-full lg:min-h-[300px] relative font-sans overflow-hidden rounded-xl border border-slate-800 shadow-2xl"
+    >
       <div className="absolute bottom-3 left-3 z-10 bg-black/80 border border-neutral-800 p-2 backdrop-blur-md flex flex-col gap-1 pointer-events-none sm:flex hidden md:flex">
         <div className="flex items-center gap-2">
             <span className="text-[8px] text-orange-500 font-bold tracking-widest uppercase">COORD:</span>
