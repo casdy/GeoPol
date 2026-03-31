@@ -30,7 +30,6 @@ import { processGoodNews } from '@/lib/goodNewsEngine';
 import LiveNewsViewer from '@/components/dashboard/LiveNewsViewer';
 import AviationStatusCard from '@/components/dashboard/AviationStatusCard';
 import WeatherInsightsSlideshow from '@/components/dashboard/WeatherInsightsSlideshow';
-import PaywallModal from '@/components/dashboard/PaywallModal';
 import CommandCenterLayout from '@/components/layout/CommandCenterLayout';
 import Footer from '@/components/layout/Footer';
 import AdminCamModal from '@/components/dashboard/AdminCamModal';
@@ -72,8 +71,6 @@ function DashboardContent() {
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [isActiveLiveInsight, setIsActiveLiveInsight] = useState(false);
   const [category, setCategory] = useState('general');
-  const [isPremium, setIsPremium] = useState(false);
-  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [selectedCountryIntel, setSelectedCountryIntel] = useState<CountryIntelligence | null>(null);
   const { addCam } = useWebcams();
@@ -274,7 +271,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen lg:h-screen w-full flex flex-col overflow-x-hidden lg:overflow-hidden">
-      <main className={`flex flex-col flex-1 lg:min-h-0 ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans`}>
+      <main className={`flex flex-col flex-1 lg:min-h-0 pb-12 sm:pb-8 xl:pb-0 ${theme.bg} ${theme.text} ${theme.selection} transition-colors duration-700 font-sans`}>
 
       <NewsModal 
         article={activeArticle} 
@@ -568,14 +565,6 @@ function DashboardContent() {
       </main>
 
       {/* Global Modals */}
-      <PaywallModal 
-        isOpen={isPaywallOpen} 
-        onClose={() => setIsPaywallOpen(false)} 
-        onSubscribe={() => {
-          setIsPremium(true);
-          setIsPaywallOpen(false);
-        }} 
-      />
       <AdminCamModal 
         isOpen={isAdminModalOpen} 
         onClose={() => setIsAdminModalOpen(false)} 
@@ -591,9 +580,7 @@ function DashboardContent() {
       )}
 
       {/* Global Footer - Natural Foot of Page */}
-      <footer className="w-full shrink-0 border-t border-neutral-900 bg-slate-950 relative z-10">
-        <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
-      </footer>
+      <Footer />
     </div>
   );
 }
