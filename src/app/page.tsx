@@ -75,9 +75,7 @@ function DashboardContent() {
   const [isPremium, setIsPremium] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isFooterVisible, setIsFooterVisible] = useState(false);
   const [selectedCountryIntel, setSelectedCountryIntel] = useState<CountryIntelligence | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const { addCam } = useWebcams();
 
   // Unified Intelligence Feed
@@ -236,20 +234,7 @@ function DashboardContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allArticles, isLoading]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsFooterVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
 
-    if (sentinelRef.current) {
-      observer.observe(sentinelRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
 
   // FLASHPOINT THEME ENGINE
@@ -580,12 +565,9 @@ function DashboardContent() {
           />
         </div>
       )}
+      </main>
 
-      {/* Global Footer - Fixed at Bottom */}
-      <div className="bg-black/95 backdrop-blur-md border-t border-neutral-800 z-[100] flex-shrink-0">
-        <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
-      </div>
-
+      {/* Global Modals */}
       <PaywallModal 
         isOpen={isPaywallOpen} 
         onClose={() => setIsPaywallOpen(false)} 
@@ -594,21 +576,24 @@ function DashboardContent() {
           setIsPaywallOpen(false);
         }} 
       />
-      {/* Tactical Override Modal */}
       <AdminCamModal 
-          isOpen={isAdminModalOpen} 
-          onClose={() => setIsAdminModalOpen(false)} 
-          onAdd={(newCam) => {
-              addCam(newCam);
-          }}
+        isOpen={isAdminModalOpen} 
+        onClose={() => setIsAdminModalOpen(false)} 
+        onAdd={(newCam) => {
+          addCam(newCam);
+        }}
       />
       {selectedCountryIntel && (
         <LiveInsightModal 
-          intel={selectedCountryIntel} 
+          intel={selectedCountryIntel as any} 
           onClose={() => setSelectedCountryIntel(null)} 
         />
       )}
-      </main>
+
+      {/* Global Footer - Natural Foot of Page */}
+      <footer className="w-full shrink-0 border-t border-neutral-900 bg-[#050505]">
+        <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
+      </footer>
     </div>
   );
 }
