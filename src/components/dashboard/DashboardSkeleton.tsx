@@ -25,7 +25,9 @@ export default function DashboardSkeleton() {
             </div>
           </div>
         }
-        leftBottomSlot={
+        slotMapping={{ LB: 'intel', RT: 'video', RB: 'metrics' }}
+        onSwap={() => {}}
+        intelComponent={
           <div className="flex flex-col h-full bg-[#050505] p-3">
              <div className="flex items-center gap-2 mb-4">
                 <Radar className="w-3 h-3 text-neutral-800 animate-pulse" />
@@ -38,7 +40,7 @@ export default function DashboardSkeleton() {
              </div>
           </div>
         }
-        videoSlot={
+        videoComponent={
           <div className="aspect-video w-full bg-neutral-900/60 flex items-center justify-center relative border-b border-neutral-800">
              <div className="animate-pulse flex flex-col items-center gap-2">
                 <div className="w-4 h-4 rounded-full border border-neutral-800" />
@@ -46,7 +48,7 @@ export default function DashboardSkeleton() {
              </div>
           </div>
         }
-        feedSlot={
+        metricsComponent={
           <div className="flex flex-col bg-black/40 h-full">
             <div className="px-3 py-4 border-b border-neutral-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
