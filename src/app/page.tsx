@@ -591,7 +591,7 @@ function DashboardContent() {
       )}
 
       {/* Global Footer - Natural Foot of Page */}
-      <footer className="w-full shrink-0 border-t border-neutral-900 bg-[#050505]">
+      <footer className="w-full shrink-0 border-t border-neutral-900 bg-slate-950 relative z-10">
         <Footer onRoadmapClick={() => setIsPaywallOpen(true)} />
       </footer>
     </div>

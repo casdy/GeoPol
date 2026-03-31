@@ -39,7 +39,7 @@ export default function Footer({ onRoadmapClick }: FooterProps) {
   }, []);
 
   return (
-    <footer className="w-full bg-[#050505] text-white border-t border-neutral-900 py-6 font-sans relative">
+    <footer className="w-full bg-slate-950 text-white border-t border-neutral-900 py-6 font-sans relative z-10">
       <div className="w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-24">
         
         {/* Compact Footer Row */}
